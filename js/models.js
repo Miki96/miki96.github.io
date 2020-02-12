@@ -1,7 +1,42 @@
+import * as THREE from './three.module.js';
+import { GLTFLoader }  from './GLTFLoader.js';
+import { GeometryUtils } from './GeometryUtils.js';
+import { Line2 } from './Line2.js';
+import { LineMaterial } from './LineMaterial.js';
+import { LineGeometry } from './LineGeometry.js';
+
+
 // scene elements
 var scene,
 	camera, fieldOfView, aspectRatio, nearPlane, farPlane, HEIGHT, WIDTH,
 	renderer, container;
+
+var loader = new GLTFLoader();
+
+var camPos = new THREE.Vector3(0, 0, 0);
+var camSpeed = 3;
+var camOffset = 200;
+var player;
+var playerSpeed = 3;
+var playerRun = 2;
+var playerRot = 0;
+var playerRotSpeed = 3;
+
+// lines
+var trail;
+var trailSize = 300;
+
+var line;
+var matLine;
+
+// controls
+var keyState = {};    
+window.addEventListener('keydown',function(e){
+    keyState[e.keyCode || e.which] = true;
+},true);    
+window.addEventListener('keyup',function(e){
+    keyState[e.keyCode || e.which] = false;
+},true);
 
 // light elements
 var hemisphereLight, shadowLight;
@@ -80,31 +115,53 @@ function initPlanets() {
 window.addEventListener('load', init, false);
 
 function init() {
-	// set up the scene, the camera and the renderer
+	// // set up the scene, the camera and the renderer
 	createScene();
 
-	// create fps stats
+	// // create fps stats
 	createStats();
 
-	// add lights
+	// // add lights
 	createLights();
 
-	// initiate planets
+	// // initiate planets
 	initPlanets();
 
-	// add planents to scene
+	// // add planents to scene
 	createPlanets();
 
-	// add rocks
+	// // add rocks
 	createRocks(620, 140);
 
-	// add backgroundStars
-	
+	// add player
+	createPlayer();
 
-	// mouse control
-	var controls = new THREE.OrbitControls(camera);
+	// create lines
+	createLines();
 
-	// var controls = new THREE.OrbitControls(camera);
+	// load ship
+	//loadShip();
+
+	// // add backgroundStars
+	// console.log('heloo');
+
+	// // mouse control
+	// //var controls = new THREE.OrbitControls(camera);
+
+	// //var controls;
+
+	// loop();
+
+	// camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+	// camera.position.z = 1;
+
+	// scene = new THREE.Scene();
+
+	// renderer = new THREE.WebGLRenderer( { antialias: true } );
+	// renderer.setSize( window.innerWidth, window.innerHeight );
+	// document.getElementById('world').appendChild( renderer.domElement );
+
+
 
 	loop();
 }
@@ -112,24 +169,204 @@ function init() {
 
 // render scene
 function loop() {
+	// next frame
+	requestAnimationFrame(loop);
 
 	stats.begin();
-	// monitored code goes here
+	// // monitored code goes here
 
-	// rotate planets
+	playerMove();
+	cameraMove();
+	updateTrail();
+
+	// // rotate planets
 	rotatePlanets();
 
-	// position text
+	// // position text
 	positionText();
 
-	// render the scene
-	renderer.render(scene, camera);
+	// // render the scene
+	
+	// move player
 
-	// end stats
+	// // end stats
 	stats.end();
-
+	
 	// call the loop function again
-	requestAnimationFrame(loop);
+	matLine.resolution.set( window.innerWidth, window.innerHeight );
+	renderer.render(scene, camera);
+}
+
+function createLines() {
+
+	trail = new Float32Array( trailSize * 3 );
+	for (let i = 0; i < trailSize * 3; i++) {
+		if (i % 3 == 0) {
+			trail[i] = 1000;
+		}
+	}
+	let colors = [];
+
+	// colors
+	let color = new THREE.Color();
+
+	for (let i = 0; i < trailSize; i++) {
+
+		color.setHSL( i / trailSize, 1.0, 0.5 );
+		colors.push( color.r, color.g, color.b );
+
+	}
+
+	var geometry = new LineGeometry();
+	geometry.setPositions( trail );
+	geometry.setColors( colors );
+
+	matLine = new LineMaterial( {
+
+		color: 0xffffff,
+		linewidth: 10, // in pixels
+		vertexColors: THREE.VertexColors,
+		//resolution:  // to be set by renderer, eventually
+		dashed: false
+
+	} );
+
+	line = new Line2( geometry, matLine );
+	line.computeLineDistances();
+	line.scale.set( 1, 1, 1 );
+	line.position.x = 0;
+	scene.add( line );
+
+	console.log(line);
+}
+
+function updateTrail() {
+	
+	if (!player) return;
+
+	for (let i = trailSize * 3 - 1; i > 2; i--) {
+		trail[i] = trail[i - 3];
+	}
+
+	trail[0] = player.position.x;
+	trail[1] = player.position.y + 3;
+	trail[2] = player.position.z;
+
+	line.geometry.setPositions( trail );
+
+}
+
+document.addEventListener('keydown', logKey);
+
+function logKey(e) {
+  	if (e.which == 84) {
+		console.log('tetsing');
+		console.log(line.geometry.attributes.position);
+	}
+}
+
+// player
+function createPlayer() {
+	// load model
+	loader.load( 'models/ship.glb', function ( model ) {
+		player = model.scene;
+
+		scene.add( player );
+		let sc = 1.5;
+		player.scale.x = sc;
+		player.scale.y = sc;
+		player.scale.z = sc;
+
+		player.position.x = 1000;
+
+		// console.log(model);
+	
+	}, undefined, function ( error ) {
+	
+		console.error( error );
+	
+	} );
+}
+
+// move player
+function playerMove() {
+
+	if (!player) return;
+
+	let offset = new THREE.Vector3(0, 0, 0);
+	let change = false;
+	let move = 0;
+	let speedUp = keyState[16] ? playerRun : 1;
+	// rotate
+	if (keyState[65]) {
+		// left
+		playerRot -= playerRotSpeed;
+		change = true;
+	};
+	if (keyState[68]) {
+		// right
+		playerRot += playerRotSpeed;
+		change = true;
+	};
+	// move
+	if (keyState[87]) {
+		// up
+		//player.position.z -= playerSpeed;
+		move += 1;
+	};
+	if (keyState[83]) {
+		// down
+		//player.position.z += playerSpeed;
+		move -= 1;
+	};
+	
+	
+	// change player position
+	// if (change) console.log(playerRot);
+	
+	// apply rotation
+	playerRot = (playerRot + 360) % 360;
+	let rad = -(Math.PI / 180) * playerRot;
+	player.rotation.y = rad;
+	// apply position
+	player.position.x += Math.sin(rad) * move * playerSpeed * speedUp;
+	player.position.z += Math.cos(rad) * move * playerSpeed * speedUp;
+};
+
+function cameraMove() {
+
+	if (!player) return;
+
+	let start = new THREE.Vector3();
+	let target = new THREE.Vector3();
+	let dir = new THREE.Vector3();
+
+	target.copy(player.position);
+	target.x += camOffset;
+	target.z += camOffset;
+	start.copy(camera.position);
+	start.y = target.y;
+
+	let dist = start.distanceTo(target);
+
+	// if (dist < camSpeed) {
+		camera.position.x = target.x;
+		camera.position.z = target.z;
+	// } else {
+	// 	dir.copy(target);
+	// 	dir.sub(start);
+	// 	dir.normalize();
+	// 	dir.multiplyScalar(camSpeed);
+	// 	camera.position.add(dir);
+	// }
+
+	//target = player.position;
+	//console.log(target);
+	//start = camera.position;
+	// start.y = 0;
+	//camera.position.x = target.x;
+	//camera.position.z = target.z;
+
 }
 
 // scene and renderer
@@ -160,9 +397,16 @@ function createScene() {
 	);
 
 	// Set the position of the camera
-	camera.position.x = 0;
-	camera.position.z = 2500;
-	camera.position.y = 3500;
+	// camera.position.x = 0;
+	// camera.position.z = 2500;
+	// camera.position.y = 3500;
+	//camera.position.y = 2500;
+	//camera.position.z = 2500;
+	camera.position.y = camOffset;
+	camera.position.x = camOffset;
+	camera.position.z = camOffset;
+
+	camera.lookAt(0, 0, 0);
 
 	// Create the renderer
 	renderer = new THREE.WebGLRenderer({
@@ -180,7 +424,7 @@ function createScene() {
 	renderer.setSize(WIDTH, HEIGHT);
 
 	// Enable shadow rendering
-	renderer.shadowMap.enabled = true;
+	//renderer.shadowMap.enabled = true;
 
 	// Add the DOM element of the renderer to the 
 	// container we created in the HTML
@@ -200,6 +444,9 @@ function handleWindowResize() {
 	renderer.setSize(WIDTH, HEIGHT);
 	camera.aspect = WIDTH / HEIGHT;
 	camera.updateProjectionMatrix();
+	// update trail
+	matLine.resolution.set(WIDTH, HEIGHT);
+	matLine.linewidth = (10 / 1000) * HEIGHT;
 }
 
 // show fps
@@ -245,7 +492,7 @@ function createLights() {
 }
 
 //planet
-PlanetMesh = function (planetSize, color) {
+var PlanetMesh = function (planetSize, color) {
 
 	// create the geometry (shape) of the planet;
 	var geom = new THREE.IcosahedronGeometry(planetSize, 1);
@@ -406,7 +653,7 @@ function createText(text) {
 	material.depthTest = false;
 	texture.needsUpdate = true;
 	// final mesh
-	sprite = new THREE.Sprite( material );
+	let sprite = new THREE.Sprite( material );
 	sprite.scale.set(400,100,1);
     return sprite;
 }
@@ -424,7 +671,7 @@ function changeCanvas(text) {
 function positionText() {
 	for (let i = 0; i < titles.length; i++) {
 		// next to planet
-		titles[i].position.copy(planets[i].mesh.matrixWorld.getPosition());
+		titles[i].position.setFromMatrixPosition(planets[i].mesh.matrixWorld);
 		// offset 
 		titles[i].position.x += 100;
 		titles[i].position.y += 50;
