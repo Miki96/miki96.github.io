@@ -16,15 +16,30 @@ var loader = new GLTFLoader();
 var camPos = new THREE.Vector3(0, 0, 0);
 var camSpeed = 3;
 var camOffset = 200;
+var camAreaNormal = 50;
+var camAreaSpeed = 100;
+
 var player;
-var playerSpeed = 3;
+var playerVelocity = 0;
+var playerMaxSpeed = 5;
+var playerDrag = 0.1;
+var playerSpeed = 0.3;
 var playerRun = 2;
 var playerRot = 0;
+var playerGlideMax = 1;
+var playerGlideSpeed = 0.03;
+var playerGlideDir = 1;
+
+var playerTilt = 0;
+var playerTiltMax = 45;
+var playerTiltBack = 3;
+var playerTiltSpeed = 2;
 var playerRotSpeed = 3;
 
 // lines
-var trail;
+var trail = [];
 var trailSize = 300;
+var trailActive = 12;
 
 var line;
 var matLine;
@@ -200,11 +215,13 @@ function loop() {
 function createLines() {
 
 	trail = new Float32Array( trailSize * 3 );
-	for (let i = 0; i < trailSize * 3; i++) {
-		if (i % 3 == 0) {
-			trail[i] = 1000;
-		}
-	}
+	// trail.push(0, 0, 0, 0, 0, 0);
+
+	// for (let i = 0; i < trailSize * 3; i++) {
+	// 	if (i % 3 == 0) {
+	// 		trail[i] = 1000;
+	// 	}
+	// }
 	let colors = [];
 
 	// colors
@@ -244,24 +261,34 @@ function updateTrail() {
 	
 	if (!player) return;
 
-	for (let i = trailSize * 3 - 1; i > 2; i--) {
-		trail[i] = trail[i - 3];
+	let move = keyState[87];
+
+	if (playerVelocity > 0) {
+		for (let i = trailSize * 3 - 1; i > 2; i--) {
+			trail[i] = trail[i - 3];
+		}
+		trail[0] = player.position.x;
+		trail[1] = player.position.y;
+		trail[2] = player.position.z;
 	}
 
-	trail[0] = player.position.x;
-	trail[1] = player.position.y + 3;
-	trail[2] = player.position.z;
+	if (move && trailActive < trailSize * 3) {
+		trailActive += 3;
+	} else if (!move && trailActive > 3) {
+		trailActive -= 3;
+	}
 
-	line.geometry.setPositions( trail );
+	line.geometry.setPositions(trail.slice(0, trailActive));
 
+	// console.log(size);
 }
 
 document.addEventListener('keydown', logKey);
-
 function logKey(e) {
   	if (e.which == 84) {
 		console.log('tetsing');
 		console.log(line.geometry.attributes.position);
+		console.log(trail);
 	}
 }
 
@@ -270,6 +297,8 @@ function createPlayer() {
 	// load model
 	loader.load( 'models/ship.glb', function ( model ) {
 		player = model.scene;
+		player.children[0].position.z = 8;
+		player.children[0].position.y = -2;
 
 		scene.add( player );
 		let sc = 1.5;
@@ -277,7 +306,7 @@ function createPlayer() {
 		player.scale.y = sc;
 		player.scale.z = sc;
 
-		player.position.x = 1000;
+		// player.position.x = 1000;
 
 		// console.log(model);
 	
@@ -294,43 +323,70 @@ function playerMove() {
 	if (!player) return;
 
 	let offset = new THREE.Vector3(0, 0, 0);
-	let change = false;
 	let move = 0;
 	let speedUp = keyState[16] ? playerRun : 1;
-	// rotate
-	if (keyState[65]) {
-		// left
-		playerRot -= playerRotSpeed;
-		change = true;
-	};
-	if (keyState[68]) {
-		// right
-		playerRot += playerRotSpeed;
-		change = true;
-	};
+	let tilted = false;
 	// move
 	if (keyState[87]) {
 		// up
-		//player.position.z -= playerSpeed;
 		move += 1;
 	};
 	if (keyState[83]) {
 		// down
-		//player.position.z += playerSpeed;
 		move -= 1;
 	};
-	
-	
-	// change player position
-	// if (change) console.log(playerRot);
+	// rotate
+	if (keyState[65]) {
+		// left
+		let m = (playerTilt > 0) ? 5 : 1;
+		playerTilt = Math.max(playerTilt - playerTiltSpeed * m, -playerTiltMax);
+		if (playerVelocity != 0) playerRot -= playerRotSpeed;
+		tilted = true;
+	};
+	if (keyState[68]) {
+		// right
+		let m = (playerTilt < 0) ? 5 : 1;
+		playerTilt = Math.min(playerTilt + playerTiltSpeed * m, playerTiltMax);
+		if (playerVelocity != 0) playerRot += playerRotSpeed;
+		tilted = true;
+	};
 	
 	// apply rotation
 	playerRot = (playerRot + 360) % 360;
 	let rad = -(Math.PI / 180) * playerRot;
 	player.rotation.y = rad;
+	// change velocity
+	if (move == 1 && playerVelocity < playerMaxSpeed * speedUp) {
+		playerVelocity = Math.min(playerVelocity + playerSpeed * speedUp * speedUp, playerMaxSpeed * speedUp);
+	} else {
+		playerVelocity = Math.max(playerVelocity -= playerDrag, 0);
+	}
 	// apply position
-	player.position.x += Math.sin(rad) * move * playerSpeed * speedUp;
-	player.position.z += Math.cos(rad) * move * playerSpeed * speedUp;
+	player.position.x += Math.sin(rad) * playerVelocity;
+	player.position.z += Math.cos(rad) * playerVelocity;
+	// tilt
+	if (!tilted) {
+		if (playerTilt > 0) {
+			playerTilt = Math.max(playerTilt - playerTiltBack, 0);
+		} else {
+			playerTilt = Math.min(playerTilt + playerTiltBack, 0);
+		}
+	}
+	let tilt = (Math.PI / 180) * playerTilt;
+	player.rotation.z = tilt;
+	// trail size
+	if (speedUp > 1 && move == 1) {
+		matLine.linewidth = (10 / 1000) * HEIGHT * 1.5;
+	} else {
+		matLine.linewidth = (10 / 1000) * HEIGHT;
+	}
+	// player glide
+	let y = player.position.y;
+	player.position.y += playerGlideSpeed * playerGlideDir;
+	if (playerGlideDir > 0 && y > playerGlideMax || playerGlideDir < 0 && y < -playerGlideMax) {
+		playerGlideDir *= -1;
+	}
+
 };
 
 function cameraMove() {
@@ -348,17 +404,27 @@ function cameraMove() {
 	start.y = target.y;
 
 	let dist = start.distanceTo(target);
+	let speedUp = keyState[16];
+	let speed = camSpeed;
 
-	// if (dist < camSpeed) {
+	// camera.position.x = target.x;
+	// camera.position.z = target.z;
+
+	if (!speedUp)
+		speed = Math.max(camSpeed, (dist / camAreaNormal) * playerVelocity);
+	else 
+		speed = Math.max(camSpeed, (dist / camAreaSpeed) * playerVelocity);
+
+	if (dist < speed) {
 		camera.position.x = target.x;
 		camera.position.z = target.z;
-	// } else {
-	// 	dir.copy(target);
-	// 	dir.sub(start);
-	// 	dir.normalize();
-	// 	dir.multiplyScalar(camSpeed);
-	// 	camera.position.add(dir);
-	// }
+	} else {
+		dir.copy(target);
+		dir.sub(start);
+		dir.normalize();
+		dir.multiplyScalar(speed);
+		camera.position.add(dir);
+	}
 
 	//target = player.position;
 	//console.log(target);
