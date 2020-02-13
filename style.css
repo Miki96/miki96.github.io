@@ -1,6 +1,8 @@
 * {
     margin: 0;
-    padding: 0;
+	padding: 0;
+	box-sizing: border-box;
+	font-family: Kano;
 }
 
 @font-face {
@@ -24,9 +26,44 @@ h1 {
 	z-index: 10;
 
 	color: #eeeeee33;
-	font-family: Kano;
 	text-transform: uppercase;
 	padding: 30px;
 	font-size: 50px;
 	letter-spacing: 0.1em;
+	/* display: none; */
+	opacity: 0;
+}
+
+#map {
+	position: absolute;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+	bottom: 0px;
+	padding: 1px;
+	overflow: hidden;
+}
+
+#mapCenter {
+	transform: translate(100px, 200px);
+	width: 2px;
+	height: 2px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.point {
+	position: absolute;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	border: 3px solid #eee;
+	margin: 0;
+	background-color: #ffffff38;
+
+	background-image: url(images/gamepad.svg);
+	background-repeat: no-repeat;
+	background-size: 70%;
+	background-position: center;
 }

@@ -50,6 +50,10 @@ var trailActive = 12;
 var line;
 var matLine;
 
+// map
+var mapCenter;
+var mapCenterEl;
+
 // controls
 var keyState = {};    
 window.addEventListener('keydown',function(e){
@@ -122,7 +126,7 @@ function initPlanets() {
 	var initSpeed = 5;
 	var initDist;
 
-	// var p0 = new Planet("Sun", 0, 0, 180, Colors.yellow);
+	var p0 = new Planet("Sun", 0, 0, 100, Colors.orange);
 	var p1 = new Planet("Mercury", 260, (2 * Math.PI) / 158, 30, Colors.orange);
 	var p2 = new Planet("Venus", 350, (2 * Math.PI) / 225, 40, Colors.lightbrown);
 	var p3 = new Planet("Earth", 440, (2 * Math.PI) / 365, 45, Colors.green);
@@ -133,7 +137,7 @@ function initPlanets() {
 	var p8 = new Planet("Neptune", 1460, (2 * Math.PI) / 8000, 65, Colors.blue);
 	var p9 = new Planet("Pluto", 1600, (2 * Math.PI) / 10000, 30, Colors.brown);
 
-	// planets.push(p0);
+	planets.push(p0);
 	planets.push(p1);
 	planets.push(p2);
 	planets.push(p3);
@@ -172,6 +176,9 @@ function init() {
 
 	// create lines
 	createLines();
+
+	// map pivots
+	createMap();
 
 	// load ship
 	//loadShip();
@@ -223,6 +230,9 @@ function loop() {
 	// // position text
 	positionText();
 
+	// update map
+	updateMap();
+
 	// // render the scene
 	
 	// move player
@@ -238,13 +248,9 @@ function loop() {
 function createLines() {
 
 	trail = new Float32Array( trailSize * 3 );
-	// trail.push(0, 0, 0, 0, 0, 0);
-
-	// for (let i = 0; i < trailSize * 3; i++) {
-	// 	if (i % 3 == 0) {
-	// 		trail[i] = 1000;
-	// 	}
-	// }
+	for (let i = 0; i < trailSize * 3; i++) {
+		if (i % 3 == 0) trail[i] = 200;
+	}
 	let colors = [];
 
 	// colors
@@ -277,7 +283,7 @@ function createLines() {
 	line.position.x = 0;
 	scene.add( line );
 
-	console.log(line);
+	// console.log(line);
 }
 
 function updateTrail() {
@@ -337,12 +343,12 @@ function playerShoot() {
 	}
 }
 
-document.addEventListener('keydown', logKey);
-function logKey(e) {
+document.addEventListener('keydown', test);
+function test(e) {
   	if (e.which == 84) {
-		console.log('tetsing');
-		console.log(line.geometry.attributes.position);
-		console.log(trail);
+		console.log('testing');
+		let pos = toScreenPosition(mapCenter, camera);
+		console.log(pos);
 	}
 }
 
@@ -370,6 +376,8 @@ function createPlayer() {
 		player = model.scene;
 		player.children[0].position.z = 8;
 		player.children[0].position.y = -2;
+
+		player.position.x = 200;
 
 		scene.add( player );
 		let sc = 1.5;
@@ -455,7 +463,6 @@ function playerMove() {
 	if (playerGlideDir > 0 && y > playerGlideMax || playerGlideDir < 0 && y < -playerGlideMax) {
 		playerGlideDir *= -1;
 	}
-
 };
 
 function cameraMove() {
@@ -514,6 +521,29 @@ function moveShots() {
 	for (let i = 0; i < shots.length; i++) {
 		shots[i].move();
 	}
+}
+
+function createMap() {
+	mapCenter = new THREE.Object3D();
+	mapCenterEl = document.getElementById('mapCenter');
+	scene.add(mapCenter);
+}
+
+function updateMap() {
+	let pos = toScreenPosition(mapCenter, camera);
+	// fix if out 
+	let pad = 31;
+	// console.log(pos);
+	if (pos.x < pad) pos.x = pad;
+	if (pos.x > WIDTH - pad) pos.x = WIDTH - pad;
+	if (pos.y < pad) pos.y = pad;
+	if (pos.y > HEIGHT - pad) pos.y = HEIGHT - pad;
+
+	pos.x += 0.02;
+	pos.y += 0.02;
+
+	mapCenterEl.style.color = "red";
+	mapCenterEl.style.transform = "translate(" + pos.x + "px," + pos.y + "px)";
 }
 
 // scene and renderer
@@ -801,7 +831,7 @@ function createText(text) {
 	texture.needsUpdate = true;
 	// final mesh
 	let sprite = new THREE.Sprite( material );
-	sprite.scale.set(400,100,1);
+	sprite.scale.set(400 / 2,100 / 2,1);
     return sprite;
 }
 
@@ -829,3 +859,29 @@ function positionText() {
 function getRandom(min, max) {
 	return Math.random() * (max - min) + min;
 }
+
+function toScreenPosition(obj, cam)
+{
+    var vector = new THREE.Vector3();
+
+    var widthHalf = 0.5*renderer.getContext().canvas.width;
+    var heightHalf = 0.5*renderer.getContext().canvas.height;
+
+    obj.updateMatrixWorld();
+	vector.setFromMatrixPosition(obj.matrixWorld);
+	vector.project(cam);
+	
+	// invert if behind
+	if (vector.z >= 1) {
+		vector.x = -vector.x;
+		vector.y = -vector.y;
+	}
+
+    vector.x = ( vector.x * widthHalf ) + widthHalf;
+    vector.y = - ( vector.y * heightHalf ) + heightHalf;
+
+    return { 
+        x: vector.x,
+        y: vector.y
+    };
+};
