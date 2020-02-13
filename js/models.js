@@ -12,6 +12,7 @@ var scene,
 	renderer, container;
 
 var loader = new GLTFLoader();
+var clock = new THREE.Clock(true);
 
 var camPos = new THREE.Vector3(0, 0, 0);
 var camSpeed = 3;
@@ -35,6 +36,11 @@ var playerTiltMax = 45;
 var playerTiltBack = 3;
 var playerTiltSpeed = 2;
 var playerRotSpeed = 3;
+
+var fireRate = 0.2;
+var fireTime = 0;
+var shotSpeed = 4;
+var shotMax = 50;
 
 // lines
 var trail = [];
@@ -84,6 +90,19 @@ var Colors = {
 	brown: 0x351b04,
 };
 
+class Shot {
+	constructor(model, dir, speed) {
+		this.model = model;
+		this.dir = dir;
+		this.speed = speed;
+		dir.multiplyScalar(speed);
+	}
+	move() {
+		this.model.position.add(this.dir);
+	}
+}
+var shots = [];
+
 // Planet class
 class Planet {
 	constructor(name, dist, speed, size, color) {
@@ -103,7 +122,7 @@ function initPlanets() {
 	var initSpeed = 5;
 	var initDist;
 
-	var p0 = new Planet("Sun", 0, 0, 180, Colors.yellow);
+	// var p0 = new Planet("Sun", 0, 0, 180, Colors.yellow);
 	var p1 = new Planet("Mercury", 260, (2 * Math.PI) / 158, 30, Colors.orange);
 	var p2 = new Planet("Venus", 350, (2 * Math.PI) / 225, 40, Colors.lightbrown);
 	var p3 = new Planet("Earth", 440, (2 * Math.PI) / 365, 45, Colors.green);
@@ -114,7 +133,7 @@ function initPlanets() {
 	var p8 = new Planet("Neptune", 1460, (2 * Math.PI) / 8000, 65, Colors.blue);
 	var p9 = new Planet("Pluto", 1600, (2 * Math.PI) / 10000, 30, Colors.brown);
 
-	planets.push(p0);
+	// planets.push(p0);
 	planets.push(p1);
 	planets.push(p2);
 	planets.push(p3);
@@ -193,6 +212,10 @@ function loop() {
 	playerMove();
 	cameraMove();
 	updateTrail();
+	playerShoot();
+
+	// bullets
+	moveShots();
 
 	// // rotate planets
 	rotatePlanets();
@@ -258,7 +281,7 @@ function createLines() {
 }
 
 function updateTrail() {
-	
+
 	if (!player) return;
 
 	let move = keyState[87];
@@ -283,6 +306,37 @@ function updateTrail() {
 	// console.log(size);
 }
 
+function playerShoot() {
+	if (keyState[32]) {
+		if (fireTime <= 0) {
+			fireTime = fireRate;
+			// shoot
+			let xoff = 10;
+			let yoff = 0;
+			let zoff = 20;
+			let size = 2;
+
+			let shot1 = createShot(size, xoff, yoff, zoff);
+			shot1.position.copy(player.position);
+			shot1.rotation.y = player.rotation.y;
+			scene.add(shot1);
+			let shot2 = createShot(size, -xoff, yoff, zoff);
+			shot2.position.copy(player.position);
+			shot2.rotation.y = player.rotation.y;
+			scene.add(shot2);
+
+			let rad = -(Math.PI / 180) * playerRot;
+			let dir = new THREE.Vector3(Math.sin(rad), 0, Math.cos(rad));
+
+			let s1 = new Shot(shot1, dir, shotSpeed);
+			let s2 = new Shot(shot2, dir, shotSpeed);
+			shots.unshift(s1, s2);
+		}
+		// decrease time
+		fireTime = Math.max(0, fireTime - clock.getDelta());
+	}
+}
+
 document.addEventListener('keydown', logKey);
 function logKey(e) {
   	if (e.which == 84) {
@@ -290,6 +344,23 @@ function logKey(e) {
 		console.log(line.geometry.attributes.position);
 		console.log(trail);
 	}
+}
+
+function createShot(size, x, y, z) {
+	let geom = new THREE.CylinderBufferGeometry(size, size, size * 3, 12);
+	var mat = new THREE.MeshBasicMaterial({
+		color: Colors.yellow,
+		// flatShading: THREE.FlatShading,
+		// shininess: 10,
+	});
+	let mesh = new THREE.Mesh(geom, mat);
+	mesh.rotation.x = Math.PI / 2;
+	mesh.position.x = x;
+	mesh.position.y = y;
+	mesh.position.z = z;
+	let pivot = new THREE.Object3D();
+	pivot.add(mesh);
+	return pivot;
 }
 
 // player
@@ -305,10 +376,6 @@ function createPlayer() {
 		player.scale.x = sc;
 		player.scale.y = sc;
 		player.scale.z = sc;
-
-		// player.position.x = 1000;
-
-		// console.log(model);
 	
 	}, undefined, function ( error ) {
 	
@@ -341,6 +408,7 @@ function playerMove() {
 		let m = (playerTilt > 0) ? 5 : 1;
 		playerTilt = Math.max(playerTilt - playerTiltSpeed * m, -playerTiltMax);
 		if (playerVelocity != 0) playerRot -= playerRotSpeed;
+		// playerRot -= playerRotSpeed;
 		tilted = true;
 	};
 	if (keyState[68]) {
@@ -348,6 +416,7 @@ function playerMove() {
 		let m = (playerTilt < 0) ? 5 : 1;
 		playerTilt = Math.min(playerTilt + playerTiltSpeed * m, playerTiltMax);
 		if (playerVelocity != 0) playerRot += playerRotSpeed;
+		// playerRot += playerRotSpeed;
 		tilted = true;
 	};
 	
@@ -433,6 +502,18 @@ function cameraMove() {
 	//camera.position.x = target.x;
 	//camera.position.z = target.z;
 
+}
+
+function moveShots() {
+	if (shots.length > shotMax) {
+		for (let i = shotMax; i < shots.length; i++) {
+			scene.remove(shots[i].model);
+		}
+		shots.length = shotMax;
+	}
+	for (let i = 0; i < shots.length; i++) {
+		shots[i].move();
+	}
 }
 
 // scene and renderer
@@ -690,8 +771,8 @@ function rockMesh(size) {
 	var mat = new THREE.MeshPhongMaterial({
 		color: Colors.gray,
 		flatShading: THREE.FlatShading,
-		transparent: true,
-		opacity: 0.8,
+		// transparent: true,
+		// opacity: 0.8,
 	});
 
 	var mesh = new THREE.Mesh(geom, mat);
