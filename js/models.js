@@ -1,6 +1,5 @@
 import * as THREE from './three.module.js';
 import { GLTFLoader }  from './GLTFLoader.js';
-import { GeometryUtils } from './GeometryUtils.js';
 import { Line2 } from './Line2.js';
 import { LineMaterial } from './LineMaterial.js';
 import { LineGeometry } from './LineGeometry.js';
@@ -17,8 +16,8 @@ var clock = new THREE.Clock(true);
 var camPos = new THREE.Vector3(0, 0, 0);
 var camSpeed = 3;
 var camOffset = 200;
-var camAreaNormal = 50;
-var camAreaSpeed = 100;
+var camAreaNormal = 20; // 50
+var camAreaSpeed = 40; // 100
 
 var player;
 var playerVelocity = 0;
@@ -46,11 +45,13 @@ var shotMax = 50;
 var trail = [];
 var trailSize = 300;
 var trailActive = 12;
+var trailWidth = 10;
 
 var line;
 var matLine;
 
 // map
+var mapPoints = [];
 var mapCenter;
 var mapCenterEl;
 
@@ -62,6 +63,9 @@ window.addEventListener('keydown',function(e){
 window.addEventListener('keyup',function(e){
     keyState[e.keyCode || e.which] = false;
 },true);
+var mobileLeft = false;
+var mobileRight = false;
+var mobileEngine = false;
 
 // light elements
 var hemisphereLight, shadowLight;
@@ -126,7 +130,7 @@ function initPlanets() {
 	var initSpeed = 5;
 	var initDist;
 
-	var p0 = new Planet("Sun", 0, 0, 100, Colors.orange);
+	// var p0 = new Planet("Sun", 0, 0, 100, Colors.orange);
 	var p1 = new Planet("Mercury", 260, (2 * Math.PI) / 158, 30, Colors.orange);
 	var p2 = new Planet("Venus", 350, (2 * Math.PI) / 225, 40, Colors.lightbrown);
 	var p3 = new Planet("Earth", 440, (2 * Math.PI) / 365, 45, Colors.green);
@@ -137,7 +141,7 @@ function initPlanets() {
 	var p8 = new Planet("Neptune", 1460, (2 * Math.PI) / 8000, 65, Colors.blue);
 	var p9 = new Planet("Pluto", 1600, (2 * Math.PI) / 10000, 30, Colors.brown);
 
-	planets.push(p0);
+	// planets.push(p0);
 	planets.push(p1);
 	planets.push(p2);
 	planets.push(p3);
@@ -156,8 +160,10 @@ function init() {
 	// // set up the scene, the camera and the renderer
 	createScene();
 
+	initMobileControls();
+
 	// // create fps stats
-	createStats();
+	// createStats();
 
 	// // add lights
 	createLights();
@@ -207,13 +213,41 @@ function init() {
 	loop();
 }
 
+function initMobileControls() {
+
+	let left = document.getElementById('leftButton');
+	let right = document.getElementById('rightButton');
+	let engine = document.getElementById('engineButton');
+
+	// left
+	['touchstart', 'mousedown'].forEach( e => 
+		left.addEventListener(e, () => { mobileLeft = true; mobileRight = false; })
+	);
+	['touchend', 'mouseup', 'mouseout'].forEach( e => 
+		left.addEventListener(e, () => { mobileLeft = false; })
+	);
+
+	['touchstart', 'mousedown'].forEach( e => 
+		right.addEventListener(e, () => { mobileRight = true; mobileLeft = false; })
+	);
+	['touchend', 'mouseup', 'mouseout'].forEach( e => 
+		right.addEventListener(e, () => { mobileRight = false })
+	);
+
+	['touchstart', 'mousedown'].forEach( e => 
+		engine.addEventListener(e, () => { mobileEngine = true })
+	);
+	['touchend', 'mouseup', 'mouseout'].forEach( e => 
+		engine.addEventListener(e, () => { mobileEngine = false })
+	);
+}
 
 // render scene
 function loop() {
 	// next frame
 	requestAnimationFrame(loop);
 
-	stats.begin();
+	// stats.begin();
 	// // monitored code goes here
 
 	playerMove();
@@ -238,7 +272,7 @@ function loop() {
 	// move player
 
 	// // end stats
-	stats.end();
+	// stats.end();
 	
 	// call the loop function again
 	matLine.resolution.set( window.innerWidth, window.innerHeight );
@@ -290,7 +324,7 @@ function updateTrail() {
 
 	if (!player) return;
 
-	let move = keyState[87];
+	let move = keyState[87] || mobileEngine;
 
 	if (playerVelocity > 0) {
 		for (let i = trailSize * 3 - 1; i > 2; i--) {
@@ -303,13 +337,15 @@ function updateTrail() {
 
 	if (move && trailActive < trailSize * 3) {
 		trailActive += 3;
-	} else if (!move && trailActive > 3) {
+	} else if (!move && trailActive > 6) {
 		trailActive -= 3;
 	}
 
-	line.geometry.setPositions(trail.slice(0, trailActive));
-
-	// console.log(size);
+	// line.geometry.setPositions(trail.slice(0, trailActive));
+	line.geometry.setPositions(trail);
+	// line.geometry.attributes.position.needsUpdate = true;
+	// line.updateMatrix();
+	// console.log(trailActive);
 }
 
 function playerShoot() {
@@ -349,6 +385,8 @@ function test(e) {
 		console.log('testing');
 		let pos = toScreenPosition(mapCenter, camera);
 		console.log(pos);
+		console.log(trail);
+		console.log(trailActive);
 	}
 }
 
@@ -401,29 +439,26 @@ function playerMove() {
 	let move = 0;
 	let speedUp = keyState[16] ? playerRun : 1;
 	let tilted = false;
+	let minVel = 1;
 	// move
-	if (keyState[87]) {
+	if (keyState[87] || mobileEngine) {
 		// up
 		move += 1;
 	};
-	if (keyState[83]) {
-		// down
-		move -= 1;
-	};
 	// rotate
-	if (keyState[65]) {
+	if (keyState[65] || mobileLeft) {
 		// left
 		let m = (playerTilt > 0) ? 5 : 1;
 		playerTilt = Math.max(playerTilt - playerTiltSpeed * m, -playerTiltMax);
-		if (playerVelocity != 0) playerRot -= playerRotSpeed;
+		if (playerVelocity > minVel) playerRot -= playerRotSpeed;
 		// playerRot -= playerRotSpeed;
 		tilted = true;
 	};
-	if (keyState[68]) {
+	if (keyState[68] || mobileRight) {
 		// right
 		let m = (playerTilt < 0) ? 5 : 1;
 		playerTilt = Math.min(playerTilt + playerTiltSpeed * m, playerTiltMax);
-		if (playerVelocity != 0) playerRot += playerRotSpeed;
+		if (playerVelocity > minVel) playerRot += playerRotSpeed;
 		// playerRot += playerRotSpeed;
 		tilted = true;
 	};
@@ -453,9 +488,9 @@ function playerMove() {
 	player.rotation.z = tilt;
 	// trail size
 	if (speedUp > 1 && move == 1) {
-		matLine.linewidth = (10 / 1000) * HEIGHT * 1.5;
+		matLine.linewidth = (trailWidth / 1000) * HEIGHT * 1.5;
 	} else {
-		matLine.linewidth = (10 / 1000) * HEIGHT;
+		matLine.linewidth = (trailWidth / 1000) * HEIGHT;
 	}
 	// player glide
 	let y = player.position.y;
@@ -524,26 +559,53 @@ function moveShots() {
 }
 
 function createMap() {
-	mapCenter = new THREE.Object3D();
-	mapCenterEl = document.getElementById('mapCenter');
-	scene.add(mapCenter);
+	// center
+	//mapPoints.push({point:'', dom:''});
+	mapPoints.push(mapPoint('mapCenter', 0, 0, 0));
+	mapPoints.push(mapPoint('mapGame', -2000, 0, 1500));
+
+	// mapCenter = new THREE.Object3D();
+	// mapCenterEl = document.getElementById('mapCenter');
+	// scene.add(mapCenter);
+}
+
+function mapPoint(domName, x, y, z) {
+	let mapPoint = new THREE.Object3D();
+	mapPoint.position.x = x;
+	mapPoint.position.y = y;
+	mapPoint.position.z = z;
+	let domElem = document.getElementById(domName);
+	scene.add(mapPoint);
+	return {point: mapPoint, dom: domElem};
 }
 
 function updateMap() {
-	let pos = toScreenPosition(mapCenter, camera);
-	// fix if out 
 	let pad = 31;
-	// console.log(pos);
-	if (pos.x < pad) pos.x = pad;
-	if (pos.x > WIDTH - pad) pos.x = WIDTH - pad;
-	if (pos.y < pad) pos.y = pad;
-	if (pos.y > HEIGHT - pad) pos.y = HEIGHT - pad;
+	for (let i = 0; i < mapPoints.length; i++) {
+		let pos = toScreenPosition(mapPoints[i].point, camera);
+		// fix if out 
+		if (pos.x < pad) pos.x = pad;
+		if (pos.x > WIDTH - pad) pos.x = WIDTH - pad;
+		if (pos.y < pad) pos.y = pad;
+		if (pos.y > HEIGHT - pad) pos.y = HEIGHT - pad;
+		pos.x += 0.02;
+		pos.y += 0.02;
+		mapPoints[i].dom.style.transform = "translate(" + pos.x + "px," + pos.y + "px)";
+	}
 
-	pos.x += 0.02;
-	pos.y += 0.02;
+	// let pos = toScreenPosition(mapCenter, camera);
+	// // fix if out 
+	// let pad = 31;
+	// if (pos.x < pad) pos.x = pad;
+	// if (pos.x > WIDTH - pad) pos.x = WIDTH - pad;
+	// if (pos.y < pad) pos.y = pad;
+	// if (pos.y > HEIGHT - pad) pos.y = HEIGHT - pad;
 
-	mapCenterEl.style.color = "red";
-	mapCenterEl.style.transform = "translate(" + pos.x + "px," + pos.y + "px)";
+	// pos.x += 0.02;
+	// pos.y += 0.02;
+
+	// mapCenterEl.style.color = "red";
+	// mapCenterEl.style.transform = "translate(" + pos.x + "px," + pos.y + "px)";
 }
 
 // scene and renderer
