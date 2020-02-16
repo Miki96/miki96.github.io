@@ -21,9 +21,9 @@ var camAreaSpeed = 40; // 100
 
 var player;
 var playerVelocity = 0;
-var playerMaxSpeed = 5;
+var playerMaxSpeed = 8;
 var playerDrag = 0.1;
-var playerSpeed = 0.3;
+var playerSpeed = 0.7;
 var playerRun = 2;
 var playerRot = 0;
 var playerGlideMax = 1;
@@ -38,22 +38,34 @@ var playerRotSpeed = 3;
 
 var fireRate = 0.2;
 var fireTime = 0;
-var shotSpeed = 4;
+var shotSpeed = 5;
 var shotMax = 50;
 
 // lines
 var trail = [];
 var trailSize = 300;
 var trailActive = 12;
-var trailWidth = 10;
-
+var trailWidth = 13;
 var line;
 var matLine;
 
 // map
 var mapPoints = [];
-var mapCenter;
-var mapCenterEl;
+
+// game
+var gameRing;
+var gameTime = 0;
+var gameTimeExtra = 10;
+var gameScore = 0;
+var gameNext = {x: 0, y: 0, z:0};
+var gameNextDistance = 3000;
+var gameStart = {x: -5000, y: 0, z:4500};
+var gameSpace = 5000;
+
+// asteroid
+var asteroids = [];
+var asteroidsDistance = 4000;
+var asteroidsNumber = 200;
 
 // controls
 var keyState = {};    
@@ -66,6 +78,7 @@ window.addEventListener('keyup',function(e){
 var mobileLeft = false;
 var mobileRight = false;
 var mobileEngine = false;
+var mobileTurbo = false;
 
 // light elements
 var hemisphereLight, shadowLight;
@@ -130,7 +143,7 @@ function initPlanets() {
 	var initSpeed = 5;
 	var initDist;
 
-	// var p0 = new Planet("Sun", 0, 0, 100, Colors.orange);
+	// var p0 = new Planet("Sun", 0, 0, 150, Colors.orange);
 	var p1 = new Planet("Mercury", 260, (2 * Math.PI) / 158, 30, Colors.orange);
 	var p2 = new Planet("Venus", 350, (2 * Math.PI) / 225, 40, Colors.lightbrown);
 	var p3 = new Planet("Earth", 440, (2 * Math.PI) / 365, 45, Colors.green);
@@ -163,7 +176,7 @@ function init() {
 	initMobileControls();
 
 	// // create fps stats
-	// createStats();
+	createStats();
 
 	// // add lights
 	createLights();
@@ -177,6 +190,9 @@ function init() {
 	// // add rocks
 	createRocks(620, 140);
 
+	// asteroid
+	createAsteroids(asteroidsNumber);
+
 	// add player
 	createPlayer();
 
@@ -186,6 +202,8 @@ function init() {
 	// map pivots
 	createMap();
 
+	// rings
+	createRingGame();
 	// load ship
 	//loadShip();
 
@@ -218,6 +236,7 @@ function initMobileControls() {
 	let left = document.getElementById('leftButton');
 	let right = document.getElementById('rightButton');
 	let engine = document.getElementById('engineButton');
+	let turbo = document.getElementById('turboButton');
 
 	// left
 	['touchstart', 'mousedown'].forEach( e => 
@@ -240,6 +259,15 @@ function initMobileControls() {
 	['touchend', 'mouseup', 'mouseout'].forEach( e => 
 		engine.addEventListener(e, () => { mobileEngine = false })
 	);
+
+	['touchstart', 'mousedown'].forEach( e => 
+		turbo.addEventListener(e, () => { mobileTurbo = true })
+	);
+	['touchend', 'mouseup', 'mouseout'].forEach( e => 
+		turbo.addEventListener(e, () => { mobileTurbo = false })
+	);
+
+
 }
 
 // render scene
@@ -247,7 +275,7 @@ function loop() {
 	// next frame
 	requestAnimationFrame(loop);
 
-	// stats.begin();
+	stats.begin();
 	// // monitored code goes here
 
 	playerMove();
@@ -261,8 +289,13 @@ function loop() {
 	// // rotate planets
 	rotatePlanets();
 
+	// move asteroids
+	updateAsteroids();
+
 	// // position text
 	positionText();
+
+	ringUpdate();
 
 	// update map
 	updateMap();
@@ -272,7 +305,7 @@ function loop() {
 	// move player
 
 	// // end stats
-	// stats.end();
+	stats.end();
 	
 	// call the loop function again
 	matLine.resolution.set( window.innerWidth, window.innerHeight );
@@ -331,7 +364,7 @@ function updateTrail() {
 			trail[i] = trail[i - 3];
 		}
 		trail[0] = player.position.x;
-		trail[1] = player.position.y;
+		trail[1] = 0;
 		trail[2] = player.position.z;
 	}
 
@@ -383,10 +416,6 @@ document.addEventListener('keydown', test);
 function test(e) {
   	if (e.which == 84) {
 		console.log('testing');
-		let pos = toScreenPosition(mapCenter, camera);
-		console.log(pos);
-		console.log(trail);
-		console.log(trailActive);
 	}
 }
 
@@ -418,7 +447,7 @@ function createPlayer() {
 		player.position.x = 200;
 
 		scene.add( player );
-		let sc = 1.5;
+		let sc = 2;
 		player.scale.x = sc;
 		player.scale.y = sc;
 		player.scale.z = sc;
@@ -437,11 +466,11 @@ function playerMove() {
 
 	let offset = new THREE.Vector3(0, 0, 0);
 	let move = 0;
-	let speedUp = keyState[16] ? playerRun : 1;
+	let speedUp = (keyState[16] || mobileTurbo) ? playerRun : 1;
 	let tilted = false;
 	let minVel = 1;
 	// move
-	if (keyState[87] || mobileEngine) {
+	if (keyState[87] || mobileEngine || mobileTurbo) {
 		// up
 		move += 1;
 	};
@@ -562,7 +591,7 @@ function createMap() {
 	// center
 	//mapPoints.push({point:'', dom:''});
 	mapPoints.push(mapPoint('mapCenter', 0, 0, 0));
-	mapPoints.push(mapPoint('mapGame', -2000, 0, 1500));
+	mapPoints.push(mapPoint('mapGame', gameStart.x, 0, gameStart.z));
 
 	// mapCenter = new THREE.Object3D();
 	// mapCenterEl = document.getElementById('mapCenter');
@@ -606,6 +635,133 @@ function updateMap() {
 
 	// mapCenterEl.style.color = "red";
 	// mapCenterEl.style.transform = "translate(" + pos.x + "px," + pos.y + "px)";
+}
+
+// rings
+function createRingGame() {
+	// geometry
+	let geometry = new THREE.TorusBufferGeometry( 100, 12, 6, 10 );
+	let material = new THREE.MeshPhongMaterial({
+		color: 0xffff00,
+		flatShading: THREE.FlatShading,
+		shininess: 10,
+	});
+	gameRing = new THREE.Mesh( geometry, material );
+	// arrow
+	geometry = new THREE.ConeBufferGeometry(30, 60, 10);
+	let arr = new THREE.Mesh( geometry, material );
+	arr.rotation.x = Math.PI / 2;
+	arr.position.z = 100;
+	gameRing.add(arr);
+
+	// position first
+	gameRing.position.x = mapPoints[1].point.position.x;
+	gameRing.position.z = mapPoints[1].point.position.z;
+
+	// position next
+	let angle = (Math.PI / 180) * getRandom(0, 359);
+	gameNext.x = gameRing.position.x + Math.sin(angle) * gameNextDistance;
+	gameNext.z = gameRing.position.z + Math.cos(angle) * gameNextDistance;
+	
+
+	// rotate first
+	let x = gameNext.x - gameRing.position.x;
+	let y = gameNext.z - gameRing.position.z;
+	let rot = Math.atan2(x, y);
+	gameRing.rotation.y = rot;
+
+	// update map
+	mapPoints[1].point.position.x = gameRing.position.x;
+	mapPoints[1].point.position.z = gameRing.position.z;
+	scene.add( gameRing );
+}
+
+function ringUpdate() {
+	if (!player) return;
+
+	// check if player collected ring
+	if (gameRing.position.distanceTo(player.position) < 120) {
+		// update ring
+		gameRing.position.x = gameNext.x;
+		gameRing.position.z = gameNext.z;
+
+		// calc next
+		let angle = 0;
+		while (true) {
+			angle = (Math.PI / 180) * getRandom(0, 359);
+			gameNext.x += Math.sin(angle) * gameNextDistance;
+			gameNext.z += Math.cos(angle) * gameNextDistance;
+			
+			if (gameNext.x < gameStart.x + gameSpace &&
+				gameNext.x > gameStart.x - gameSpace &&
+				gameNext.z < gameStart.z + gameSpace &&
+				gameNext.z > gameStart.z - gameSpace) {
+					break;
+			} else {
+				console.log('error');
+				gameNext.x -= Math.sin(angle) * gameNextDistance;
+				gameNext.z -= Math.cos(angle) * gameNextDistance;
+			}
+		}
+
+		// rotate first
+		let x = gameNext.x - gameRing.position.x;
+		let y = gameNext.z - gameRing.position.z;
+		let rot = Math.atan2(x, y);
+		gameRing.rotation.y = rot;
+
+		// update map
+		mapPoints[1].point.position.x = gameRing.position.x;
+		mapPoints[1].point.position.z = gameRing.position.z;
+	}
+}
+
+// asteroids
+function createAsteroids(size) {
+	for (let i = 0; i < size; i++) {
+		let a = asteroid(getRandom(10, 30));
+		a.position.x = getRandom(-asteroidsDistance, asteroidsDistance);
+		a.position.z = getRandom(-asteroidsDistance, asteroidsDistance);
+		asteroids.push(a);
+		scene.add(a);
+	}
+}
+
+function updateAsteroids() {
+	if (!player) return;
+	let px = player.position.x;
+	let pz = player.position.z;
+	let dist = 0;
+	let angle = 0;
+	for (let i = 0; i < asteroids.length; i++) {
+		let a = asteroids[i];
+		if (a.position.distanceTo(player.position) > asteroidsDistance) {
+			angle = (Math.PI / 180) * getRandom(0, 359);
+			dist = asteroidsDistance / 2 + getRandom(0, asteroidsDistance / 2);
+			a.position.x = px + Math.sin(angle) * dist;
+			a.position.z = pz + Math.cos(angle) * dist;
+			a.position.y = getRandom(-30, 20);
+		}
+	}
+}
+
+function asteroid(size) {
+	let geom;
+	// random shape
+	if (Math.random()>0.5)
+		geom = new THREE.IcosahedronGeometry(size, 0);
+	else 
+		geom = new THREE.OctahedronGeometry(size, 1);
+
+	// create the material 
+	var mat = new THREE.MeshPhongMaterial({
+		color: Colors.gray,
+		flatShading: THREE.FlatShading,
+	});
+
+	var mesh = new THREE.Mesh(geom, mat);
+
+	return mesh;
 }
 
 // scene and renderer
@@ -685,7 +841,7 @@ function handleWindowResize() {
 	camera.updateProjectionMatrix();
 	// update trail
 	matLine.resolution.set(WIDTH, HEIGHT);
-	matLine.linewidth = (10 / 1000) * HEIGHT;
+	matLine.linewidth = (trailWidth / 1000) * HEIGHT;
 }
 
 // show fps
@@ -815,7 +971,7 @@ function createPath(radius) {
 	var line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
 		color: Colors.white,
 		transparent: true,
-		linewidth: 5,
+		linewidth: 1,
 		opacity: 0.3
 	}));
 

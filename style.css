@@ -1,3 +1,8 @@
+@font-face {
+	font-family: Kano;
+	src: url('fonts/Kano.otf');
+}
+
 * {
     margin: 0;
 	padding: 0;
@@ -5,10 +10,6 @@
 	font-family: Kano;
 }
 
-@font-face {
-    font-family: Kano;
-    src: url('fonts/Kano.otf');
-}
 
 body {
 	touch-action: none;
@@ -65,15 +66,16 @@ h1 {
 	border: 3px solid #eee;
 	margin: 0;
 	background-color: #ffffff38;
-	background-color: #4a3b4f;
+	/* background-color: #4a3b4f; */
 	background-repeat: no-repeat;
 	background-size: 60%;
 	background-position: center;
 }
 
 #mapCenter .point {
-	background-position: 40% 60%;
-	background-image: url(images/space.svg);
+	background-size: 70%;
+	/* background-position: 40% 60%; */
+	background-image: url(images/orbit.svg);
 }
 
 #mapGame .point {
@@ -122,7 +124,17 @@ h1 {
 }
 #engineButton > div {
 	background-size: 41%;
-	background-image: url(images/burn-solid.svg);
+	background-image: url(images/up.svg);
+}
+
+#turboButton {
+	right: 10px;
+	bottom: 110px;
+}
+#turboButton > div {
+	background-size: 41%;
+	background-image: url(images/up.svg), url(images/up.svg);
+	background-position: center 30%, center 70%;
 }
 
 .button > div {
@@ -134,9 +146,10 @@ h1 {
 	border: 2px solid #eee;
 }
 
+
 /* MOBILE */
 @media screen and (min-width: 800px) {
 	#controls {
 		display: none;
 	}
-  }
+}
