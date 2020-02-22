@@ -13,9 +13,11 @@ var scene,
 var loader = new GLTFLoader();
 var clock = new THREE.Clock(true);
 
+var delta = 0;
+
 var camPos = new THREE.Vector3(0, 0, 0);
 var camSpeed = 3;
-var camOffset = 200;
+var camOffset = 1200;
 var camAreaNormal = 20; // 50
 var camAreaSpeed = 40; // 100
 
@@ -25,10 +27,11 @@ var playerMaxSpeed = 8;
 var playerDrag = 0.1;
 var playerSpeed = 0.7;
 var playerRun = 2;
-var playerRot = 0;
+var playerRot = 220;
 var playerGlideMax = 1;
 var playerGlideSpeed = 0.03;
 var playerGlideDir = 1;
+var playerStart = {x: -1500, y: 0, z:3000};
 
 var playerTilt = 0;
 var playerTiltMax = 45;
@@ -45,7 +48,7 @@ var shotMax = 50;
 var trail = [];
 var trailSize = 300;
 var trailActive = 12;
-var trailWidth = 13;
+var trailWidth = 8;
 var line;
 var matLine;
 
@@ -55,12 +58,21 @@ var mapPoints = [];
 // game
 var gameRing;
 var gameTime = 0;
-var gameTimeExtra = 10;
+var gameTimeEl;
+var gameTimeExtra = 4;
 var gameScore = 0;
+var gameScoreEl;
+var gameInfoEl;
+var gameOverEl;
 var gameNext = {x: 0, y: 0, z:0};
 var gameNextDistance = 3000;
-var gameStart = {x: -5000, y: 0, z:4500};
+var gameStart = {x: -7000, y: 0, z:0};
 var gameSpace = 5000;
+var gameHolesNumber = 100;
+var gameHoles = [];
+var gameHolesSizes = [];
+var gameSlowedTime = 0;
+var gameStarted = false;
 
 // asteroid
 var asteroids = [];
@@ -90,9 +102,7 @@ var planets = [];
 var stats;
 
 // canvas with planet names
-var ctx;
 var texture;
-var canvas;
 var titles = [];
 
 // Color Palette
@@ -143,7 +153,7 @@ function initPlanets() {
 	var initSpeed = 5;
 	var initDist;
 
-	// var p0 = new Planet("Sun", 0, 0, 150, Colors.orange);
+	var p0 = new Planet("Sun", 0, 0, 150, Colors.orange);
 	var p1 = new Planet("Mercury", 260, (2 * Math.PI) / 158, 30, Colors.orange);
 	var p2 = new Planet("Venus", 350, (2 * Math.PI) / 225, 40, Colors.lightbrown);
 	var p3 = new Planet("Earth", 440, (2 * Math.PI) / 365, 45, Colors.green);
@@ -154,7 +164,7 @@ function initPlanets() {
 	var p8 = new Planet("Neptune", 1460, (2 * Math.PI) / 8000, 65, Colors.blue);
 	var p9 = new Planet("Pluto", 1600, (2 * Math.PI) / 10000, 30, Colors.brown);
 
-	// planets.push(p0);
+	planets.push(p0);
 	planets.push(p1);
 	planets.push(p2);
 	planets.push(p3);
@@ -175,8 +185,10 @@ function init() {
 
 	initMobileControls();
 
+	initInfo();
+
 	// // create fps stats
-	createStats();
+	// createStats();
 
 	// // add lights
 	createLights();
@@ -204,6 +216,9 @@ function init() {
 
 	// rings
 	createRingGame();
+	createHoles(gameHolesNumber);
+
+	delta = clock.getDelta();
 	// load ship
 	//loadShip();
 
@@ -270,13 +285,26 @@ function initMobileControls() {
 
 }
 
+function initInfo() {
+	let strings = ["CONTROLS:", "WASD - MOVE", "SHIFT - BOOST", "SPACE - SHOOT"];
+	for (let i = 0; i < strings.length; i++) {
+		let text = createInfo(strings[i]);
+		text.position.x = playerStart.x + 200;
+		text.position.y = playerStart.y;
+		text.position.z = playerStart.z + i * 60 - 50;
+		scene.add(text);
+	}
+}
+
 // render scene
 function loop() {
 	// next frame
 	requestAnimationFrame(loop);
 
-	stats.begin();
+	// stats.begin();
 	// // monitored code goes here
+
+	delta = clock.getDelta();
 
 	playerMove();
 	cameraMove();
@@ -296,6 +324,7 @@ function loop() {
 	positionText();
 
 	ringUpdate();
+	holesCollision();
 
 	// update map
 	updateMap();
@@ -305,7 +334,7 @@ function loop() {
 	// move player
 
 	// // end stats
-	stats.end();
+	// stats.end();
 	
 	// call the loop function again
 	matLine.resolution.set( window.innerWidth, window.innerHeight );
@@ -316,7 +345,11 @@ function createLines() {
 
 	trail = new Float32Array( trailSize * 3 );
 	for (let i = 0; i < trailSize * 3; i++) {
-		if (i % 3 == 0) trail[i] = 200;
+		if (i % 3 == 0) {
+			trail[i] = playerStart.x;
+			trail[i+1] = playerStart.y;
+			trail[i+2] = playerStart.z;
+		}
 	}
 	let colors = [];
 
@@ -386,10 +419,10 @@ function playerShoot() {
 		if (fireTime <= 0) {
 			fireTime = fireRate;
 			// shoot
-			let xoff = 10;
+			let xoff = 25;
 			let yoff = 0;
 			let zoff = 20;
-			let size = 2;
+			let size = 5;
 
 			let shot1 = createShot(size, xoff, yoff, zoff);
 			shot1.position.copy(player.position);
@@ -408,7 +441,7 @@ function playerShoot() {
 			shots.unshift(s1, s2);
 		}
 		// decrease time
-		fireTime = Math.max(0, fireTime - clock.getDelta());
+		fireTime = Math.max(0, fireTime - delta);
 	}
 }
 
@@ -416,6 +449,7 @@ document.addEventListener('keydown', test);
 function test(e) {
   	if (e.which == 84) {
 		console.log('testing');
+		console.log(player.position);
 	}
 }
 
@@ -444,10 +478,11 @@ function createPlayer() {
 		player.children[0].position.z = 8;
 		player.children[0].position.y = -2;
 
-		player.position.x = 200;
+		player.position.x = playerStart.x;
+		player.position.z = playerStart.z;
 
 		scene.add( player );
-		let sc = 2;
+		let sc = 3;
 		player.scale.x = sc;
 		player.scale.y = sc;
 		player.scale.z = sc;
@@ -467,6 +502,11 @@ function playerMove() {
 	let offset = new THREE.Vector3(0, 0, 0);
 	let move = 0;
 	let speedUp = (keyState[16] || mobileTurbo) ? playerRun : 1;
+	let slowed = 1;
+	if (gameSlowedTime > 0) {
+		speedUp = 0.5;
+		slowed = 4;
+	}
 	let tilted = false;
 	let minVel = 1;
 	// move
@@ -500,7 +540,7 @@ function playerMove() {
 	if (move == 1 && playerVelocity < playerMaxSpeed * speedUp) {
 		playerVelocity = Math.min(playerVelocity + playerSpeed * speedUp * speedUp, playerMaxSpeed * speedUp);
 	} else {
-		playerVelocity = Math.max(playerVelocity -= playerDrag, 0);
+		playerVelocity = Math.max(playerVelocity -= playerDrag * slowed, 0);
 	}
 	// apply position
 	player.position.x += Math.sin(rad) * playerVelocity;
@@ -538,8 +578,8 @@ function cameraMove() {
 	let dir = new THREE.Vector3();
 
 	target.copy(player.position);
-	target.x += camOffset;
-	target.z += camOffset;
+	// target.x += camOffset; // diag
+	// target.z += camOffset; // diag
 	start.copy(camera.position);
 	start.y = target.y;
 
@@ -673,11 +713,35 @@ function createRingGame() {
 	// update map
 	mapPoints[1].point.position.x = gameRing.position.x;
 	mapPoints[1].point.position.z = gameRing.position.z;
-	scene.add( gameRing );
+	scene.add(gameRing);
+
+	// find elements
+	gameScoreEl = document.getElementById("gameRaceScore");
+	gameTimeEl = document.getElementById("gameRaceTime");
+	gameOverEl = document.getElementById("gameOver");
+	gameInfoEl = document.getElementById("gameRace");
 }
 
 function ringUpdate() {
 	if (!player) return;
+	gameTime = Math.max(0, gameTime - delta);
+
+	if (gameTime == 0 && gameStarted) {
+		gameInfoEl.classList.add("hide");
+		gameOverEl.innerHTML = "GAME OVER <span>" + gameScore + "</span>";
+		gameOverEl.classList.remove("hide");
+		// gameOver
+		setTimeout(() => {
+			// reset
+			gameOverEl.classList.add("hide");
+			gameStarted = false;
+			gameScore = 0;
+		}, 3000);
+	}
+
+	if (gameTime > 0) {
+		gameTimeEl.innerHTML = Math.round(gameTime);
+	}
 
 	// check if player collected ring
 	if (gameRing.position.distanceTo(player.position) < 120) {
@@ -698,7 +762,6 @@ function ringUpdate() {
 				gameNext.z > gameStart.z - gameSpace) {
 					break;
 			} else {
-				console.log('error');
 				gameNext.x -= Math.sin(angle) * gameNextDistance;
 				gameNext.z -= Math.cos(angle) * gameNextDistance;
 			}
@@ -713,6 +776,51 @@ function ringUpdate() {
 		// update map
 		mapPoints[1].point.position.x = gameRing.position.x;
 		mapPoints[1].point.position.z = gameRing.position.z;
+
+
+		// scored
+		
+		if (!gameStarted) {
+			gameStarted = true;
+			gameTime = 5;
+			gameScore = 0;
+			gameInfoEl.classList.remove("hide");
+		} else {
+			gameScore++;
+		}
+
+		gameTime += gameTimeExtra;
+		gameScoreEl.innerHTML = gameScore;
+	}
+}
+
+// black holes
+function createHoles(size) {
+	let beginX = gameStart.x - gameSpace;
+	let endX = gameStart.x + gameSpace;
+	let beginZ = gameStart.z - gameSpace;
+	let endZ = gameStart.z + gameSpace;
+	for (let i = 0; i < size; i++) {
+		let r = getRandom(70, 150);
+		let a = asteroid(r);
+		a.position.x = getRandom(beginX, endX);
+		a.position.z = getRandom(beginZ, endZ);
+		gameHoles.push(a);
+		gameHolesSizes.push(r);
+		scene.add(a);
+	}
+}
+
+function holesCollision() {
+	if (!player) return;
+	gameSlowedTime = Math.max(0, gameSlowedTime - delta);
+	if (gameSlowedTime > 0) return;
+
+	for (let i = 0; i < gameHoles.length; i++) {
+		if (player.position.distanceTo(gameHoles[i].position) < gameHolesSizes[i]) {
+			gameSlowedTime = 0.5;
+			break;
+		}
 	}
 }
 
@@ -798,10 +906,12 @@ function createScene() {
 	//camera.position.y = 2500;
 	//camera.position.z = 2500;
 	camera.position.y = camOffset;
-	camera.position.x = camOffset;
-	camera.position.z = camOffset;
+	camera.position.x = playerStart.x;
+	camera.position.z = playerStart.z;
+	// camera.position.x = camOffset; // diag
+	// camera.position.z = camOffset; // diag
 
-	camera.lookAt(0, 0, 0);
+	camera.lookAt(playerStart.x, 0, playerStart.z);
 
 	// Create the renderer
 	renderer = new THREE.WebGLRenderer({
@@ -1028,14 +1138,47 @@ function rockMesh(size) {
 	return mesh;
 }
 
+// Info
+function createInfo(text) {
+	// create canvas
+	let canvas = document.createElement("canvas");
+	let ctx = canvas.getContext('2d');
+	canvas.width = 1024;
+	canvas.height = 256;
+	
+	// EDIT
+	ctx.font = 'bolder 70pt Kano';
+	// ctx.fillStyle = 'red';
+    // ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'white';
+    ctx.textAlign = "right";
+    // ctx.textBaseline = "middle";
+    ctx.fillText(text, canvas.width, canvas.height / 2);
+	
+	// texture and geometry for text
+	texture = new THREE.Texture(canvas);
+	var material = new THREE.SpriteMaterial({ 
+		map: texture, 
+		color: 0xffffff,
+		transparent: true,
+		opacity: 0.9
+	});
+	material.depthTest = false;
+	texture.needsUpdate = true;
+	// final mesh
+	let sprite = new THREE.Sprite( material );
+	sprite.scale.set(400 / 1, 100 / 1, 1);
+    return sprite;
+}
+
 // Title of planet
 function createText(text) {
 	// create canvas
-	canvas = document.createElement("canvas");
-	ctx = canvas.getContext('2d');
+	let canvas = document.createElement("canvas");
+	let ctx = canvas.getContext('2d');
 	canvas.width = 1024;
 	canvas.height = 256;
-	changeCanvas(text);
+	changeCanvas(text, ctx, canvas);
 	
 	// texture and geometry for text
 	texture = new THREE.Texture(canvas);
@@ -1053,7 +1196,7 @@ function createText(text) {
     return sprite;
 }
 
-function changeCanvas(text) {
+function changeCanvas(text, ctx, canvas) {
     ctx.font = 'bolder 130pt Kano';
 	// ctx.fillStyle = 'red';
     // ctx.fillRect(0, 0, canvas.width, canvas.height);

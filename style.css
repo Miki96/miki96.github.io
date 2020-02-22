@@ -85,7 +85,7 @@ h1 {
 
 /* CONTROLS */
 
-#controls {
+#controls, #UI {
 	position: absolute;
     top: 0px;
     left: 0px;
@@ -133,8 +133,7 @@ h1 {
 }
 #turboButton > div {
 	background-size: 41%;
-	background-image: url(images/up.svg), url(images/up.svg);
-	background-position: center 30%, center 70%;
+	background-image: url(images/burn-solid.svg);
 }
 
 .button > div {
@@ -146,6 +145,56 @@ h1 {
 	border: 2px solid #eee;
 }
 
+/* GAME */
+#gameRace {
+	position: absolute;
+	padding: 20px;
+	right: 0px;
+	left: 0;
+	height: 199px;
+	/* background-color: thistle; */
+	color: #eee;
+	font-size: 40px;
+	text-align: center;
+	font-weight: bold;
+}
+
+#gameRace div {
+	padding-bottom: 10px;
+}
+
+#gameRace .number, #gameOver {
+	font-family: Roboto;
+	color: yellow;
+}
+
+#gameOver {
+	color: #eee;
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	font-size: 70;
+	letter-spacing: 0.05em;
+	font-weight: bold;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+	flex-direction: column;
+}
+
+#gameOver span {
+	color: yellow;
+	font-family: Roboto;
+	font-weight: bold;
+	font-size: 100px;
+}
+
+.hide {
+	display: none !important;
+}
 
 /* MOBILE */
 @media screen and (min-width: 800px) {
