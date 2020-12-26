@@ -1,17 +1,22 @@
 <html>
 	<head>
-		<title>Solar Sistem</title>
+		<title>Space Profile</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 		<link rel="stylesheet" href="style.css">
 		<link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
 		<script src="js/Stats.js"></script>
 		<script type="module" src="js/models.js"></script>
+		<link rel="icon" type="image/png" href="images/favicon.png"/>
+		<meta name="theme-color" content="#160419"/>
 	</head>
 	<body>
 		<div id="world"></div>
 		<div id="map">
 			<div id="mapCenter"><div class="point"></div></div>
+			<div id="mapRace"><div class="point"></div></div>
 			<div id="mapGame"><div class="point"></div></div>
+			<div id="mapWork"><div class="point"></div></div>
+			<div id="mapSchool"><div class="point"></div></div>
 		</div>
 		<div id="UI">
 			<div id="gameRace" class="hide">
@@ -25,6 +30,27 @@
 			<div class="button" id="rightButton"><div></div></div>
 			<div class="button" id="engineButton"><div></div></div>
 			<div class="button" id="turboButton"><div></div></div>
+		</div>
+		<div id="portal"><div class="portalIcon"></div></div>
+		<div id="menu">
+			<div id="links">
+				<div class="link">HOME</div>
+				<div class="line"></div>
+				<div class="link">PLANETS</div>
+				<div class="line"></div>
+				<div class="link">ASTEROIDS</div>
+				<div class="line"></div>
+				<div class="link">EDUCATION</div>
+				<div class="line"></div>
+				<div class="link">WORK</div>
+				<div class="line"></div>
+				<div class="link">GAMES</div>
+			</div>
+		</div>
+		<div id="games">
+			<div class="gameLink">
+				<a href="games/tower">TOWER</a>
+			</div>
 		</div>
 		<h1>Solar System</h1>
 	</body>

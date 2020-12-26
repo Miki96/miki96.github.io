@@ -17,11 +17,12 @@ var delta = 0;
 
 var camPos = new THREE.Vector3(0, 0, 0);
 var camSpeed = 3;
-var camOffset = 1200;
+var camOffset = {x: 0, y: 1200 * 1, z:0}
 var camAreaNormal = 20; // 50
 var camAreaSpeed = 40; // 100
 
 var player;
+var playerScale = 4;
 var playerVelocity = 0;
 var playerMaxSpeed = 8;
 var playerDrag = 0.1;
@@ -48,12 +49,16 @@ var shotMax = 50;
 var trail = [];
 var trailSize = 300;
 var trailActive = 12;
-var trailWidth = 8;
+var trailWidth = 10;
 var line;
 var matLine;
 
 // map
 var mapPoints = [];
+
+// portals
+var portalsVisible = false;
+var portalOffset = {x: -200, y: 0, z:200};
 
 // game
 var gameRing;
@@ -187,6 +192,9 @@ function init() {
 
 	initInfo();
 
+	// add portal controls
+	createPortals();
+
 	// // create fps stats
 	// createStats();
 
@@ -246,6 +254,23 @@ function init() {
 	loop();
 }
 
+function createPortals() {
+	let portal = document.getElementById('portal');
+	let links = document.getElementById('menu');
+
+	// show hide portals
+	portal.addEventListener("click", () => {
+		portalsVisible = !portalsVisible;
+		if (portalsVisible) {
+			links.style.opacity = "1";
+			links.style.visibility = "visible";
+		} else {
+			links.style.opacity = "0";
+			links.style.visibility = "hidden";
+		}
+	});
+}
+
 function initMobileControls() {
 
 	let left = document.getElementById('leftButton');
@@ -286,12 +311,12 @@ function initMobileControls() {
 }
 
 function initInfo() {
-	let strings = ["CONTROLS:", "WASD - MOVE", "SHIFT - BOOST", "SPACE - SHOOT"];
+	let strings = ["CONTROLS", "WASD - MOVE", "SHIFT - BOOST", "SPACE - SHOOT"];
 	for (let i = 0; i < strings.length; i++) {
 		let text = createInfo(strings[i]);
-		text.position.x = playerStart.x + 200;
+		text.position.x = playerStart.x + 200 - 500 - i * 20 + 300;
 		text.position.y = playerStart.y;
-		text.position.z = playerStart.z + i * 60 - 50;
+		text.position.z = playerStart.z + i * 60 + 150;
 		scene.add(text);
 	}
 }
@@ -390,9 +415,9 @@ function updateTrail() {
 
 	if (!player) return;
 
-	let move = keyState[87] || mobileEngine;
+	let move = keyState[87] || mobileEngine || mobileTurbo;
 
-	if (playerVelocity > 0) {
+	if (playerVelocity > 0 || true) {
 		for (let i = trailSize * 3 - 1; i > 2; i--) {
 			trail[i] = trail[i - 3];
 		}
@@ -401,7 +426,7 @@ function updateTrail() {
 		trail[2] = player.position.z;
 	}
 
-	if (move && trailActive < trailSize * 3) {
+	if (move && trailActive < trailSize * 3 - 12) {
 		trailActive += 3;
 	} else if (!move && trailActive > 6) {
 		trailActive -= 3;
@@ -409,6 +434,7 @@ function updateTrail() {
 
 	// line.geometry.setPositions(trail.slice(0, trailActive));
 	line.geometry.setPositions(trail);
+	line.geometry.maxInstancedCount = trailActive / 3;
 	// line.geometry.attributes.position.needsUpdate = true;
 	// line.updateMatrix();
 	// console.log(trailActive);
@@ -482,15 +508,13 @@ function createPlayer() {
 		player.position.z = playerStart.z;
 
 		scene.add( player );
-		let sc = 3;
+		let sc = playerScale;
 		player.scale.x = sc;
 		player.scale.y = sc;
 		player.scale.z = sc;
 	
 	}, undefined, function ( error ) {
-	
 		console.error( error );
-	
 	} );
 }
 
@@ -577,41 +601,45 @@ function cameraMove() {
 	let target = new THREE.Vector3();
 	let dir = new THREE.Vector3();
 
-	target.copy(player.position);
-	// target.x += camOffset; // diag
-	// target.z += camOffset; // diag
-	start.copy(camera.position);
-	start.y = target.y;
+	// target.copy(player.position);
+	// target.x += camOffset.x; // diag
+	// target.z += camOffset.z; // diag
+	// start.copy(camera.position);
+	// start.y = target.y;
 
-	let dist = start.distanceTo(target);
-	let speedUp = keyState[16];
-	let speed = camSpeed;
+	// let dist = start.distanceTo(target);
+	// let speedUp = keyState[16];
+	// let speed = camSpeed;
 
-	// camera.position.x = target.x;
-	// camera.position.z = target.z;
+	// // camera.position.x = target.x;
+	// // camera.position.z = target.z;
 
-	if (!speedUp)
-		speed = Math.max(camSpeed, (dist / camAreaNormal) * playerVelocity);
-	else 
-		speed = Math.max(camSpeed, (dist / camAreaSpeed) * playerVelocity);
+	// if (!speedUp)
+	// 	speed = Math.max(camSpeed, (dist / camAreaNormal) * playerVelocity);
+	// else 
+	// 	speed = Math.max(camSpeed, (dist / camAreaSpeed) * playerVelocity);
 
-	if (dist < speed) {
-		camera.position.x = target.x;
-		camera.position.z = target.z;
-	} else {
-		dir.copy(target);
-		dir.sub(start);
-		dir.normalize();
-		dir.multiplyScalar(speed);
-		camera.position.add(dir);
-	}
+	// if (dist < speed) {
+	// 	camera.position.x = target.x;
+	// 	camera.position.z = target.z;
+	// } else {
+	// 	dir.copy(target);
+	// 	dir.sub(start);
+	// 	dir.normalize();
+	// 	dir.multiplyScalar(speed);
+	// 	camera.position.add(dir);
+	// }
 
-	//target = player.position;
+	// camera.lookAt(player.position);
+
+	target = player.position;
 	//console.log(target);
 	//start = camera.position;
 	// start.y = 0;
-	//camera.position.x = target.x;
-	//camera.position.z = target.z;
+	camera.position.x = target.x + camOffset.x;
+	camera.position.y = target.y + camOffset.y;
+	camera.position.z = target.z + camOffset.z;
+	camera.lookAt(player.position);
 
 }
 
@@ -629,13 +657,20 @@ function moveShots() {
 
 function createMap() {
 	// center
-	//mapPoints.push({point:'', dom:''});
 	mapPoints.push(mapPoint('mapCenter', 0, 0, 0));
-	mapPoints.push(mapPoint('mapGame', gameStart.x, 0, gameStart.z));
+	mapPoints.push(mapPoint('mapRace', gameStart.x, 0, gameStart.z));
+	mapPoints.push(mapPoint('mapSchool', 500, 0, 6000));
+	mapPoints.push(mapPoint('mapWork', -5000, 0, 5000));
+	mapPoints.push(mapPoint('mapGame', 3000, 0, 3000));
 
-	// mapCenter = new THREE.Object3D();
-	// mapCenterEl = document.getElementById('mapCenter');
-	// scene.add(mapCenter);
+	// links
+	let links = document.getElementsByClassName("link");
+	for (let i = 0; i < links.length; i++) {
+		let ii = i;
+		links[i].addEventListener("click", () => {
+			travelToLocation(ii - 1);
+		});
+	}
 }
 
 function mapPoint(domName, x, y, z) {
@@ -675,6 +710,31 @@ function updateMap() {
 
 	// mapCenterEl.style.color = "red";
 	// mapCenterEl.style.transform = "translate(" + pos.x + "px," + pos.y + "px)";
+}
+
+function travelToLocation(index) {
+	playerVelocity = 0
+
+	if (index == -1) {
+		// start position
+		player.position.x = playerStart.x;
+		player.position.y = playerStart.y;
+		player.position.z = playerStart.z;
+	}
+	else {
+		player.position.x = mapPoints[index].point.position.x;
+		player.position.y = mapPoints[index].point.position.y;
+		player.position.z = mapPoints[index].point.position.z;
+		player.position.add(portalOffset);
+	}
+	trailActive = 12;
+
+	// hide menu
+	portalsVisible = !portalsVisible;
+	let links = document.getElementById('menu');
+	links.style.opacity = "0";
+	links.style.visibility = "hidden";
+
 }
 
 // rings
@@ -905,7 +965,7 @@ function createScene() {
 	// camera.position.y = 3500;
 	//camera.position.y = 2500;
 	//camera.position.z = 2500;
-	camera.position.y = camOffset;
+	camera.position.y = camOffset.y;
 	camera.position.x = playerStart.x;
 	camera.position.z = playerStart.z;
 	// camera.position.x = camOffset; // diag
@@ -926,6 +986,7 @@ function createScene() {
 
 	// Define the size of the renderer; in this case,
 	// it will fill the entire screen
+	renderer.setPixelRatio(window.devicePixelRatio);
 	renderer.setSize(WIDTH, HEIGHT);
 
 	// Enable shadow rendering
@@ -1242,7 +1303,7 @@ function toScreenPosition(obj, cam)
     vector.y = - ( vector.y * heightHalf ) + heightHalf;
 
     return { 
-        x: vector.x,
-        y: vector.y
+        x: vector.x / window.devicePixelRatio,
+        y: vector.y / window.devicePixelRatio
     };
 };
