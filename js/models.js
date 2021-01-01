@@ -8,7 +8,7 @@ import { LineGeometry } from './LineGeometry.js';
 // scene elements
 var scene,
 	camera, fieldOfView, aspectRatio, nearPlane, farPlane, HEIGHT, WIDTH,
-	renderer, container;
+	renderer, container, canvas;
 
 var loader = new GLTFLoader();
 var clock = new THREE.Clock(true);
@@ -20,6 +20,7 @@ var camSpeed = 3;
 var camOffset = {x: 0, y: 1200 * 1, z:0}
 var camAreaNormal = 20; // 50
 var camAreaSpeed = 40; // 100
+var pickPosition = {x: 0, y: 0};
 
 var player;
 var playerScale = 4;
@@ -55,6 +56,11 @@ var matLine;
 
 // map
 var mapPoints = [];
+var mapLocRace = {x: -7000, y: 0, z:0};
+var mapLocPlanets = {x: 0, y: 0, z: 0};
+var mapLocWork = {x: -5000, y: 0, z: 5000};
+var mapLocGames = {x: 3000, y: 0, z: 3000};
+var mapLocSchool = {x: 500, y: 0, z: 6000};
 
 // portals
 var portalsVisible = false;
@@ -71,7 +77,6 @@ var gameInfoEl;
 var gameOverEl;
 var gameNext = {x: 0, y: 0, z:0};
 var gameNextDistance = 3000;
-var gameStart = {x: -7000, y: 0, z:0};
 var gameSpace = 5000;
 var gameHolesNumber = 100;
 var gameHoles = [];
@@ -96,6 +101,9 @@ var mobileLeft = false;
 var mobileRight = false;
 var mobileEngine = false;
 var mobileTurbo = false;
+
+// game links
+var gameLinks = [];
 
 // light elements
 var hemisphereLight, shadowLight;
@@ -226,6 +234,9 @@ function init() {
 	createRingGame();
 	createHoles(gameHolesNumber);
 
+	// games
+	createGames();
+
 	delta = clock.getDelta();
 	// load ship
 	//loadShip();
@@ -294,7 +305,7 @@ function initMobileControls() {
 	);
 
 	['touchstart', 'mousedown'].forEach( e => 
-		engine.addEventListener(e, () => { mobileEngine = true })
+		engine.addEventListener(e, () => { mobileEngine = true; })
 	);
 	['touchend', 'mouseup', 'mouseout'].forEach( e => 
 		engine.addEventListener(e, () => { mobileEngine = false })
@@ -657,11 +668,11 @@ function moveShots() {
 
 function createMap() {
 	// center
-	mapPoints.push(mapPoint('mapCenter', 0, 0, 0));
-	mapPoints.push(mapPoint('mapRace', gameStart.x, 0, gameStart.z));
-	mapPoints.push(mapPoint('mapSchool', 500, 0, 6000));
-	mapPoints.push(mapPoint('mapWork', -5000, 0, 5000));
-	mapPoints.push(mapPoint('mapGame', 3000, 0, 3000));
+	mapPoints.push(mapPoint('mapCenter', mapLocPlanets));
+	mapPoints.push(mapPoint('mapRace', mapLocRace));
+	mapPoints.push(mapPoint('mapSchool', mapLocSchool));
+	mapPoints.push(mapPoint('mapWork', mapLocWork));
+	mapPoints.push(mapPoint('mapGame', mapLocGames));
 
 	// links
 	let links = document.getElementsByClassName("link");
@@ -673,11 +684,11 @@ function createMap() {
 	}
 }
 
-function mapPoint(domName, x, y, z) {
+function mapPoint(domName, loc) {
 	let mapPoint = new THREE.Object3D();
-	mapPoint.position.x = x;
-	mapPoint.position.y = y;
-	mapPoint.position.z = z;
+	mapPoint.position.x = loc.x;
+	mapPoint.position.y = loc.y;
+	mapPoint.position.z = loc.z;
 	let domElem = document.getElementById(domName);
 	scene.add(mapPoint);
 	return {point: mapPoint, dom: domElem};
@@ -816,10 +827,10 @@ function ringUpdate() {
 			gameNext.x += Math.sin(angle) * gameNextDistance;
 			gameNext.z += Math.cos(angle) * gameNextDistance;
 			
-			if (gameNext.x < gameStart.x + gameSpace &&
-				gameNext.x > gameStart.x - gameSpace &&
-				gameNext.z < gameStart.z + gameSpace &&
-				gameNext.z > gameStart.z - gameSpace) {
+			if (gameNext.x < mapLocRace.x + gameSpace &&
+				gameNext.x > mapLocRace.x - gameSpace &&
+				gameNext.z < mapLocRace.z + gameSpace &&
+				gameNext.z > mapLocRace.z - gameSpace) {
 					break;
 			} else {
 				gameNext.x -= Math.sin(angle) * gameNextDistance;
@@ -856,10 +867,10 @@ function ringUpdate() {
 
 // black holes
 function createHoles(size) {
-	let beginX = gameStart.x - gameSpace;
-	let endX = gameStart.x + gameSpace;
-	let beginZ = gameStart.z - gameSpace;
-	let endZ = gameStart.z + gameSpace;
+	let beginX = mapLocRace.x - gameSpace;
+	let endX = mapLocRace.x + gameSpace;
+	let beginZ = mapLocRace.z - gameSpace;
+	let endZ = mapLocRace.z + gameSpace;
 	for (let i = 0; i < size; i++) {
 		let r = getRandom(70, 150);
 		let a = asteroid(r);
@@ -996,6 +1007,9 @@ function createScene() {
 	// container we created in the HTML
 	container = document.getElementById('world');
 	container.appendChild(renderer.domElement);
+	
+	// interactions
+	canvas = renderer.domElement;
 
 	// Listen to the screen: if the user resizes it
 	// we have to update the camera and the renderer size
@@ -1200,21 +1214,27 @@ function rockMesh(size) {
 }
 
 // Info
-function createInfo(text) {
+function createInfo(text, size = 70, bold = true, depth = false, w = 1024, h = 256, align = 'right') {
 	// create canvas
 	let canvas = document.createElement("canvas");
 	let ctx = canvas.getContext('2d');
-	canvas.width = 1024;
-	canvas.height = 256;
+	canvas.width = w;
+	canvas.height = h;
 	
 	// EDIT
-	ctx.font = 'bolder 70pt Kano';
-	// ctx.fillStyle = 'red';
-    // ctx.fillRect(0, 0, canvas.width, canvas.height);
+	let style = (bold) ? 'bold ' : ' ';
+	ctx.font = style + size + 'pt Kano';
+	//ctx.fillStyle = 'red';
+    //ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'white';
-    ctx.textAlign = "right";
-    // ctx.textBaseline = "middle";
-    ctx.fillText(text, canvas.width, canvas.height / 2);
+    ctx.textAlign = align;
+	// ctx.textBaseline = "middle";
+	if (align == 'center')
+		ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+	else if (align == 'right')
+		ctx.fillText(text, canvas.width, canvas.height / 2);
+	else
+		ctx.fillText(text, 0, canvas.height / 2);
 	
 	// texture and geometry for text
 	texture = new THREE.Texture(canvas);
@@ -1222,13 +1242,52 @@ function createInfo(text) {
 		map: texture, 
 		color: 0xffffff,
 		transparent: true,
+		depthTest: depth,
+		depthWrite: false,
 		opacity: 0.9
+	});
+	texture.needsUpdate = true;
+	// final mesh
+	let sprite = new THREE.Sprite( material );
+	sprite.scale.set(w / 2.5, h / 2.5, 1);
+    return sprite;
+}
+
+// Rect
+function createRect(w, h) {
+	// create canvas
+	let canvas = document.createElement("canvas");
+	let ctx = canvas.getContext('2d');
+	canvas.width = w;
+	canvas.height = h;
+	
+	// back
+	ctx.beginPath();
+	ctx.lineWidth = "0";
+	ctx.fillStyle = "#ffffff11";
+	ctx.rect(0, 0, w, h);
+	ctx.fill();
+
+	// border
+	ctx.beginPath();
+	ctx.lineWidth = "10";
+	ctx.strokeStyle = "white";
+	ctx.rect(0, 0, w, h);
+	ctx.stroke();
+
+	// texture and geometry for text
+	texture = new THREE.Texture(canvas);
+	var material = new THREE.SpriteMaterial({ 
+		map: texture, 
+		color: 0xffffff,
+		transparent: true,
+		opacity: 0.6
 	});
 	material.depthTest = false;
 	texture.needsUpdate = true;
 	// final mesh
 	let sprite = new THREE.Sprite( material );
-	sprite.scale.set(400 / 1, 100 / 1, 1);
+	sprite.scale.set(w / 1, h / 1, 1);
     return sprite;
 }
 
@@ -1277,7 +1336,197 @@ function positionText() {
 	}
 }
 
-// random min max
+// games
+function createGames() {
+	console.log("games");
+	let loc = mapLocGames;
+	//loc = playerStart;
+	let x = loc.x + 600;
+	let y = loc.y - 50;
+	let z = loc.z;
+
+	let imgList = [
+		{name: 'ROLLER', image: 'game7.png', link: '/games/roller', done: true},
+		{name: 'RACER', image: 'game6.png', link: '#', done: false},
+		{name: 'TOWER', image: 'game0.png', link: '#', done: false},
+		{name: 'UNITS', image: 'game5.png', link: '#', done: false},
+		{name: 'HEROES', image: 'game4.png', link: '#', done: false},
+		{name: 'RUNNER', image: 'game1.png', link: '#', done: false},
+	];
+
+	for (let i = 0; i < imgList.length; i++) {
+		createBilboard(x, y, z, imgList[i].image);
+		createGameText(x, y, z, imgList[i].name, imgList[i].link, imgList[i].done);
+		x += 100;
+		z += 350;
+	}
+}
+
+function createBilboard(x, y, z, image) {
+	let rtd = (3.14 / 180);
+
+	let pivot = new THREE.Object3D();
+	//let rock = rockMesh(35);
+	let rock = createBox(30, 30, 30, Colors.gray);
+	//rock.position.y = -10;
+	//rock.rotation.x = 30 * rtd;
+	//pivot.add(rock);
+
+	// board
+	let width = 128 * 3.42;
+	let height = 72 * 3.42;
+	let depth = 30;
+	let offset = 0;
+	//let board = createBox(width, depth, height, Colors.gray);
+	//board.position.z = -200;
+	//pivot.add(board);
+	
+	// pin
+	let pin1 = createBox(100, 10, 10, Colors.gray);
+	pin1.position.x = - width / 2;
+	pin1.position.z = -60;
+	pin1.rotation.x = 45 * rtd;
+	pivot.add(pin1);
+	let pin2 = createBox(100, 10, 10, Colors.gray);
+	pin2.position.x = - width / 2;
+	pin2.position.z = 60;
+	pin2.rotation.x = 45 * rtd;
+	pivot.add(pin2);
+
+
+	// borders
+	let bSize = 10;
+
+	let bR = createBox(bSize, bSize, height, Colors.gray);
+	bR.position.x = width/2 - bSize /2;
+	bR.position.z = offset;
+	bR.position.y = depth / 2;
+	pivot.add(bR);
+
+	let bL = createBox(bSize, bSize, height, Colors.gray);
+	bL.position.x = -width/2 + bSize /2;
+	bL.position.z = offset;
+	bL.position.y = depth / 2;
+	pivot.add(bL);
+
+	let bT = createBox(width, bSize, bSize, Colors.gray);
+	bT.position.z = offset - height/2 + bSize /2;;
+	bT.position.y = depth / 2;
+	pivot.add(bT);
+
+	let bB = createBox(width, bSize, bSize, Colors.gray);
+	bB.position.z = offset + height/2 - bSize /2;;
+	bB.position.y = depth / 2;
+	pivot.add(bB);
+	
+	// image
+	let geometry = new THREE.PlaneGeometry(width - bSize * 2, height - bSize * 2, 1, 1);
+	let texture = THREE.ImageUtils.loadTexture('images/' + image);
+	let material = new THREE.MeshBasicMaterial({map: texture});
+	//let material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+
+	let poster = new THREE.Mesh(geometry, material);
+	poster.position.z = offset;
+	poster.position.y = 10;
+	poster.rotation.x = 90 * rtd;
+	poster.rotation.y = 180 * rtd;
+	poster.rotation.z = 180 * rtd;
+	pivot.add(poster);
+
+	
+	// pivot.rotation.x = 25 * rtd;
+	// pivot.rotation.y = -25 * rtd;
+	// pivot.rotation.z = 15 * rtd;
+	pivot.position.x = x;
+	pivot.position.y = y;
+	pivot.position.z = z;
+
+	scene.add(pivot);
+}
+
+function createGameText(x, y, z, text, link, done) {
+	// text
+	let s1 = "CLICK TO PLAY";
+	let s2 = "COMING SOON";
+	let s = done ? s1 : s2;
+	let strings = [s, text];
+	for (let i = 0; i < strings.length; i++) {
+		let text = createInfo(strings[i], (i+1) * 38, i == 1, false, 800, 800, 'center');
+		text.position.x = x + -390;
+		text.position.y = y + 0;
+		text.position.z = z + i * 60 + -30;
+		scene.add(text);
+	}
+
+	// link
+	let rect = createRect(250, 250);
+	rect.userData = { URL: link };
+	rect.position.x = x - 390;
+	rect.position.y = y;
+	rect.position.z = z + 0;
+	scene.add(rect);
+	
+	gameLinks.push(rect);
+}
+
+function createBox(width, height, depth, color) {
+	let geometry = new THREE.BoxGeometry( width, height, depth );
+	let material = new THREE.MeshPhongMaterial({
+		color: color,
+		flatShading: THREE.FlatShading,
+	});
+	let cube = new THREE.Mesh( geometry, material );
+	return cube;
+}
+
+// interaction
+function getCanvasRelativePosition(event) {
+	const rect = canvas.getBoundingClientRect();
+	return {
+		x: (event.clientX - rect.left) * canvas.width  / rect.width,
+		y: (event.clientY - rect.top ) * canvas.height / rect.height,
+	};
+}
+
+function setPickPosition(event) {
+	const pos = getCanvasRelativePosition(event);
+	pickPosition.x = (pos.x / canvas.width ) *  2 - 1;
+	pickPosition.y = (pos.y / canvas.height) * -2 + 1;  // note we flip Y
+	//console.log(pickPosition);
+
+	// prevent click when flying
+	if (!mobileLeft && !mobileRight && !mobileEngine && !mobileTurbo) {
+		pick(pickPosition, scene, camera);
+	}
+}
+
+function pick(normalizedPosition, scene, camera) {
+	let raycaster = new THREE.Raycaster();
+
+	// cast a ray through the frustum
+	raycaster.setFromCamera(normalizedPosition, camera);
+	// get the list of objects the ray intersected
+	const intersectedObjects = raycaster.intersectObjects(gameLinks);
+	//console.log(gameLinks);
+	if (intersectedObjects.length) {
+		// pick the first object. It's the closest one
+		let pickedObject = intersectedObjects[0].object;
+		// save its color
+		//console.log(pickedObject);
+		if (pickedObject && !portalsVisible) {
+			//console.log("PAGE " + pickedObject.userData.URL);
+			window.location = pickedObject.userData.URL;
+		}
+		//pickedObjectSavedColor = this.pickedObject.material.emissive.getHex();
+		// set its emissive color to flashing red/yellow
+		//pickedObject.material.emissive.setHex((100 * 8) % 2 > 1 ? 0xFFFF00 : 0xFF0000);
+	}
+}
+
+//touchstart
+window.addEventListener('click', setPickPosition);
+
+// Helper functions
 function getRandom(min, max) {
 	return Math.random() * (max - min) + min;
 }

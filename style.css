@@ -181,16 +181,31 @@ h1 {
 }
 
 .button {
-	width: 60px;
-	height: 60px;
+	width: 100px;
+	height: 100px;
 	position: absolute;
-	bottom: 20px;
-	border: 2px solid rgba(238, 238, 238, 0.1);
+	bottom: 0px;
+	padding: 20px;
+	/* background-color: #E91E63; */
+	/* border: 1px solid white; */
+}
+
+.button > div {
+	background-repeat: no-repeat;
+	background-size: 40%;
+	background-position: center;
+	width: 100%;
+	height: 100%;
+	opacity: 0.5;
+	border: 2px solid rgba(238, 238, 238, 0.2);
 	border-radius: 20%;
 }
 
 #leftButton {
-	left: 20px;	
+	width: 90px;
+	padding-left: 5px;
+	padding-right: 25px;
+	left: 0px;	
 	transform: rotate(180deg);
 }
 #leftButton > div {
@@ -199,6 +214,9 @@ h1 {
 }
 
 #rightButton {
+	width: 90px;
+	padding-left: 5px;
+	padding-right: 25px;
 	left: 90px;
 }
 #rightButton > div {
@@ -207,7 +225,12 @@ h1 {
 }
 
 #engineButton {
-	right: 20px;
+	height: 90px;
+	/* padding-left: 5px; */
+	/* padding-right: 15px; */
+	padding-top: 5px;
+	padding-bottom: 25px;
+	right: 0px;
 }
 #engineButton > div {
 	background-position: 55%;
@@ -216,7 +239,10 @@ h1 {
 }
 
 #turboButton {
-	right: 20px;
+	padding-top: 25px;
+	padding-bottom: 5px;
+	height: 90px;
+	right: 0px;
 	bottom: 90px;
 	/* display: none; */
 }
@@ -227,15 +253,6 @@ h1 {
 	/* background-position: 30%, 75%; */
 	/* transform: rotate(270deg); */
 	/* background-image: url(images/burn-solid.svg); */
-}
-
-.button > div {
-	background-repeat: no-repeat;
-	background-size: 40%;
-	background-position: center;
-	width: 100%;
-	height: 100%;
-	opacity: 0.5;
 }
 
 /* GAME */
