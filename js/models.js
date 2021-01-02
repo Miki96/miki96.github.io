@@ -12,6 +12,7 @@ var scene,
 
 var loader = new GLTFLoader();
 var clock = new THREE.Clock(true);
+var texLoader = new THREE.TextureLoader;
 
 var delta = 0;
 
@@ -84,10 +85,15 @@ var gameHolesSizes = [];
 var gameSlowedTime = 0;
 var gameStarted = false;
 
-// asteroid
+// asteroids
 var asteroids = [];
 var asteroidsDistance = 4000;
-var asteroidsNumber = 200;
+var asteroidsNumber = 200; //200
+
+// stars
+var starsObj;
+var starsDistance = 4000;
+var starsNumber = 100;
 
 // controls
 var keyState = {};    
@@ -220,6 +226,9 @@ function init() {
 
 	// asteroid
 	createAsteroids(asteroidsNumber);
+
+	// stars
+	createStars(starsNumber);
 
 	// add player
 	createPlayer();
@@ -355,6 +364,9 @@ function loop() {
 
 	// move asteroids
 	updateAsteroids();
+
+	// move stars
+	updateStars();
 
 	// // position text
 	positionText();
@@ -523,6 +535,9 @@ function createPlayer() {
 		player.scale.x = sc;
 		player.scale.y = sc;
 		player.scale.z = sc;
+
+		updateStars(true);
+		updateAsteroids(true);
 	
 	}, undefined, function ( error ) {
 		console.error( error );
@@ -746,6 +761,10 @@ function travelToLocation(index) {
 	links.style.opacity = "0";
 	links.style.visibility = "hidden";
 
+	// update based on player position
+	updateStars(true);
+	updateAsteroids(true);
+
 }
 
 // rings
@@ -906,20 +925,29 @@ function createAsteroids(size) {
 	}
 }
 
-function updateAsteroids() {
+function updateAsteroids(teleport = false) {
 	if (!player) return;
 	let px = player.position.x;
 	let pz = player.position.z;
 	let dist = 0;
 	let angle = 0;
+	let offset = (asteroidsDistance / 2);
+
 	for (let i = 0; i < asteroids.length; i++) {
 		let a = asteroids[i];
-		if (a.position.distanceTo(player.position) > asteroidsDistance) {
+		if (teleport) {
 			angle = (Math.PI / 180) * getRandom(0, 359);
-			dist = asteroidsDistance / 2 + getRandom(0, asteroidsDistance / 2);
+			dist = asteroidsDistance;
+			dist = dist * Math.sqrt(getRandom(0, 1));
 			a.position.x = px + Math.sin(angle) * dist;
 			a.position.z = pz + Math.cos(angle) * dist;
-			a.position.y = getRandom(-30, 20);
+			a.position.y = getRandom(-450, -20);
+		} else if (a.position.distanceTo(player.position) > asteroidsDistance) {
+			angle = (Math.PI / 180) * getRandom(0, 359);
+			dist = offset + getRandom(0, asteroidsDistance - offset);
+			a.position.x = px + Math.sin(angle) * dist;
+			a.position.z = pz + Math.cos(angle) * dist;
+			a.position.y = getRandom(-450, -20);
 		}
 	}
 }
@@ -941,6 +969,68 @@ function asteroid(size) {
 	var mesh = new THREE.Mesh(geom, mat);
 
 	return mesh;
+}
+
+// stars
+function createStars(size) {
+	let vertices = [];
+	let colors = [];
+	let color = new THREE.Color();
+
+	for ( let i = 0; i < size; i ++ ) {
+		let x = getRandom(-starsDistance, starsDistance);
+		let y = getRandom(-1000, 0);
+		//let y = 0;
+		let z = getRandom(-starsDistance, starsDistance);
+		vertices.push( x, y, z );
+
+		color.setHSL( i / size, 1.0, 0.6 );
+		colors.push( color.r, color.g, color.b );
+		//colors.push(0, 255, 255);
+	}
+
+	let geometry = new THREE.BufferGeometry();
+	geometry.setAttribute( 'position', new THREE.Float32BufferAttribute(vertices, 3));
+	geometry.setAttribute( 'color', new THREE.Float32BufferAttribute(colors, 3));
+
+	let material = new THREE.PointsMaterial( { vertexColors: true, size:15 } );
+	let points = new THREE.Points( geometry, material );
+	points.geometry.attributes.position.needsUpdate = true;
+
+	starsObj = points;
+	starsObj.frustumCulled = false;
+
+	scene.add( points );
+}
+
+function updateStars(teleport = false) {
+
+	let stars = starsObj.geometry.attributes.position.array;
+
+	if (!player) return;
+	let px = player.position.x;
+	let pz = player.position.z;
+	let dist = 0;
+	let angle = 0;
+	let offset = (starsDistance / 2);
+
+	for (let i = 0; i < stars.length; i+=3) {
+		let v = new THREE.Vector3( stars[i], 0, stars[i+2] );
+
+		if (teleport) {
+			angle = (Math.PI / 180) * getRandom(0, 359);
+			dist = starsDistance * Math.sqrt(getRandom(0, 1));
+			stars[i] = px + Math.sin(angle) * dist;
+			stars[i+2] = pz + Math.cos(angle) * dist;
+		} else if (v.distanceTo(player.position) > starsDistance) {
+			angle = (Math.PI / 180) * getRandom(0, 359);
+			dist = offset + getRandom(0, starsDistance - offset);
+			stars[i] = px + Math.sin(angle) * dist;
+			stars[i+2] = pz + Math.cos(angle) * dist;
+		}
+	}
+
+	starsObj.geometry.attributes.position.needsUpdate = true;
 }
 
 // scene and renderer
@@ -1338,7 +1428,6 @@ function positionText() {
 
 // games
 function createGames() {
-	console.log("games");
 	let loc = mapLocGames;
 	//loc = playerStart;
 	let x = loc.x + 600;
@@ -1421,7 +1510,9 @@ function createBilboard(x, y, z, image) {
 	
 	// image
 	let geometry = new THREE.PlaneGeometry(width - bSize * 2, height - bSize * 2, 1, 1);
-	let texture = THREE.ImageUtils.loadTexture('images/' + image);
+	let texture = texLoader.load('images/' + image, undefined, undefined, undefined);
+	// texture.minFilter = THREE.LinearFilter;
+
 	let material = new THREE.MeshBasicMaterial({map: texture});
 	//let material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
 
@@ -1451,7 +1542,7 @@ function createGameText(x, y, z, text, link, done) {
 	let s = done ? s1 : s2;
 	let strings = [s, text];
 	for (let i = 0; i < strings.length; i++) {
-		let text = createInfo(strings[i], (i+1) * 38, i == 1, false, 800, 800, 'center');
+		let text = createInfo(strings[i], (i+1) * 38, i == 1, false, 1024, 1024, 'center');
 		text.position.x = x + -390;
 		text.position.y = y + 0;
 		text.position.z = z + i * 60 + -30;
@@ -1459,7 +1550,7 @@ function createGameText(x, y, z, text, link, done) {
 	}
 
 	// link
-	let rect = createRect(250, 250);
+	let rect = createRect(256, 256);
 	rect.userData = { URL: link };
 	rect.position.x = x - 390;
 	rect.position.y = y;
