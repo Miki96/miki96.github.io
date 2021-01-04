@@ -561,16 +561,14 @@ function playerUpdate() {
 	if (!player) return;
 
 	playerWing += playerWingDir * playerWingSpeed * delta;
-	if (playerWing > playerWingMax)
+	playerWing = Math.max(Math.min(playerWingMax, playerWing), -playerWingMax);
+	if (playerWing >= playerWingMax)
 		playerWingDir = -1;
-	else if (playerWing < -playerWingMax)
+	else if (playerWing <= -playerWingMax)
 		playerWingDir = 1;
 
 	player.children[1].position.x = playerWing;
 	player.children[2].position.x = -playerWing;
-
-	// player.children[1].position.z = 10.25 + playerWing;
-	// player.children[2].position.z = 10.25 + playerWing;
 
 	player.children[0].rotation.x = -3.14 / 2 - (playerWing / playerWingMax) * 3.14 * 0.06;
 }
