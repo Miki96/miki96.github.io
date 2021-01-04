@@ -23,6 +23,13 @@ var camAreaNormal = 20; // 50
 var camAreaSpeed = 40; // 100
 var pickPosition = {x: 0, y: 0};
 
+// camera controls
+var camMouse = {x: 0, y: 0};
+var lastCamMouse = {x: 0, y: 0};
+var camMouseSpeed = 1;
+var camMouseDown = false;
+var camControl = false;
+
 var player;
 var playerScale = 4;
 var playerVelocity = 0;
@@ -92,6 +99,7 @@ var gameSlowedTime = 0;
 var gameStarted = false;
 
 // asteroids
+var rock;
 var asteroids = [];
 var asteroidsDistance = 4000;
 var asteroidsNumber = 200; //200
@@ -207,8 +215,8 @@ window.addEventListener('load', init, false);
 function init() {
 	// // set up the scene, the camera and the renderer
 	createScene();
-
 	initMobileControls();
+	createCameraControls();
 
 	initInfo();
 
@@ -227,11 +235,8 @@ function init() {
 	// // add planents to scene
 	createPlanets();
 
-	// // add rocks
-	createRocks(620, 140);
-
-	// asteroid
-	createAsteroids(asteroidsNumber);
+	// add rock model (asteroids, rocks)
+	loadRock();
 
 	// stars
 	createStars(starsNumber);
@@ -244,10 +249,6 @@ function init() {
 
 	// map pivots
 	createMap();
-
-	// rings
-	createRingGame();
-	createHoles(gameHolesNumber);
 
 	// games
 	createGames();
@@ -332,8 +333,6 @@ function initMobileControls() {
 	['touchend', 'mouseup', 'mouseout'].forEach( e => 
 		turbo.addEventListener(e, () => { mobileTurbo = false })
 	);
-
-
 }
 
 function initInfo() {
@@ -359,6 +358,7 @@ function loop() {
 
 	playerMove();
 	cameraMove();
+	cameraControls();
 	updateTrail();
 	playerShoot();
 
@@ -592,6 +592,7 @@ function playerMove() {
 	if (keyState[87] || mobileEngine || mobileTurbo) {
 		// up
 		move += 1;
+		camControl = false;
 	};
 	// rotate
 	if (keyState[65] || mobileLeft) {
@@ -650,7 +651,8 @@ function playerMove() {
 
 function cameraMove() {
 
-	if (!player) return;
+	//let move = keyState[87] || mobileEngine || mobileTurbo;
+	if (!player || camControl) return;
 
 	let start = new THREE.Vector3();
 	let target = new THREE.Vector3();
@@ -791,6 +793,8 @@ function travelToLocation(index) {
 	links.style.visibility = "hidden";
 
 	// update based on player position
+	camControl = false;
+	cameraMove();
 	updateStars(true);
 	updateAsteroids(true);
 
@@ -842,7 +846,7 @@ function createRingGame() {
 }
 
 function ringUpdate() {
-	if (!player) return;
+	if (!player || !rock) return;
 	gameTime = Math.max(0, gameTime - delta);
 
 	if (gameTime == 0 && gameStarted) {
@@ -944,6 +948,29 @@ function holesCollision() {
 }
 
 // asteroids
+function loadRock() {
+	// load model
+	loader.load( 'models/rock.glb', function ( model ) {
+		rock = model.scene;
+		let color = new THREE.Color(0.6, 0.6, 0.6);
+		rock.children[0].material.color = color;
+
+		createRockDepends();
+	}, undefined, function ( error ) {
+		console.error( error );
+	});
+}
+
+function createRockDepends() {
+	// load dependent values
+	createAsteroids(asteroidsNumber);
+	createRocks(620, 140);
+
+	// game
+	createRingGame();
+	createHoles(gameHolesNumber);
+}
+
 function createAsteroids(size) {
 	for (let i = 0; i < size; i++) {
 		let a = asteroid(getRandom(10, 30));
@@ -955,7 +982,7 @@ function createAsteroids(size) {
 }
 
 function updateAsteroids(teleport = false) {
-	if (!player) return;
+	if (!player || !rock) return;
 	let px = player.position.x;
 	let pz = player.position.z;
 	let dist = 0;
@@ -982,20 +1009,17 @@ function updateAsteroids(teleport = false) {
 }
 
 function asteroid(size) {
-	let geom;
-	// random shape
-	if (Math.random()>0.5)
-		geom = new THREE.IcosahedronGeometry(size, 0);
-	else 
-		geom = new THREE.OctahedronGeometry(size, 1);
+	
+	let mesh = rock.clone();
+	size = size * 0.7;
+	mesh.scale.x = size;
+	mesh.scale.y = size;
+	mesh.scale.z = size;
 
-	// create the material 
-	var mat = new THREE.MeshPhongMaterial({
-		color: Colors.gray,
-		flatShading: THREE.FlatShading,
-	});
-
-	var mesh = new THREE.Mesh(geom, mat);
+	// random rotation
+	mesh.rotation.x = getRandom(0, 1) * 2 * 3.14;
+	mesh.rotation.y = getRandom(0, 1) * 2 * 3.14;
+	mesh.rotation.z = getRandom(0, 1) * 2 * 3.14;
 
 	return mesh;
 }
@@ -1633,7 +1657,7 @@ function pick(normalizedPosition, scene, camera) {
 		let pickedObject = intersectedObjects[0].object;
 		// save its color
 		//console.log(pickedObject);
-		if (pickedObject && !portalsVisible) {
+		if (pickedObject && !portalsVisible && !camMouseDown) {
 			//console.log("PAGE " + pickedObject.userData.URL);
 			window.location = pickedObject.userData.URL;
 		}
@@ -1645,6 +1669,58 @@ function pick(normalizedPosition, scene, camera) {
 
 //touchstart
 window.addEventListener('click', setPickPosition);
+
+// camera control
+function createCameraControls() {
+	document.addEventListener('mousemove', (e) => {
+		camMouse.x = e.clientX;
+		camMouse.y = e.clientY;
+	});
+	document.addEventListener('touchmove', (e) => {
+		camMouse.x = e.touches[0].clientX;
+		camMouse.y = e.touches[0].clientY;
+	});
+
+	['touchstart', 'mousedown'].forEach( ev => 
+		document.addEventListener(ev, (e) => {
+			if (mobileEngine || mobileTurbo) return;
+			e.preventDefault();
+			camMouseDown = true;
+			camControl = true; 
+			if (ev == 'touchstart') {
+				camMouse.x = e.touches[0].clientX;
+				camMouse.y = e.touches[0].clientY;
+				lastCamMouse.x = e.touches[0].clientX;
+				lastCamMouse.y = e.touches[0].clientY;
+			}
+		})
+	);
+	['touchend', 'mouseup'].forEach( ev => 
+		document.addEventListener(ev, () => { 
+			camMouseDown = false; 
+		})
+	);
+	['mouseleave'].forEach( ev => 
+		document.addEventListener(ev, () => { 
+			camMouseDown = false;
+			camControl = false;
+		})
+	);
+}
+
+function cameraControls() {
+	if (camMouseDown) {
+		let x = camMouse.x - lastCamMouse.x;
+		let y = camMouse.y - lastCamMouse.y;
+
+		camera.position.x -= x * camMouseSpeed;
+		camera.position.z -= y * camMouseSpeed;
+	}
+
+	// copy old
+	lastCamMouse.x = camMouse.x;
+	lastCamMouse.y = camMouse.y;
+}
 
 // Helper functions
 function getRandom(min, max) {
