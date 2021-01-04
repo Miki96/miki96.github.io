@@ -37,15 +37,21 @@ var playerGlideDir = 1;
 var playerStart = {x: -1500, y: 0, z:3000};
 
 var playerTilt = 0;
-var playerTiltMax = 45;
+var playerTiltMax = 20;
 var playerTiltBack = 3;
 var playerTiltSpeed = 2;
 var playerRotSpeed = 3;
+
+var playerWing = 0;
+var playerWingMax = 0.3;
+var playerWingSpeed = 0.5;
+var playerWingDir = 1;
 
 var fireRate = 0.2;
 var fireTime = 0;
 var shotSpeed = 5;
 var shotMax = 50;
+
 
 // lines
 var trail = [];
@@ -377,6 +383,9 @@ function loop() {
 	// update map
 	updateMap();
 
+	// player wings
+	playerUpdate();
+
 	// // render the scene
 	
 	// move player
@@ -470,7 +479,7 @@ function playerShoot() {
 			// shoot
 			let xoff = 25;
 			let yoff = 0;
-			let zoff = 20;
+			let zoff = 50;
 			let size = 5;
 
 			let shot1 = createShot(size, xoff, yoff, zoff);
@@ -524,14 +533,18 @@ function createPlayer() {
 	// load model
 	loader.load( 'models/ship.glb', function ( model ) {
 		player = model.scene;
-		player.children[0].position.z = 8;
-		player.children[0].position.y = -2;
+		let glass = new THREE.Color(0.2, 0.2, 0.2);
+		player.children[0].children[1].material.color = glass;
 
 		player.position.x = playerStart.x;
 		player.position.z = playerStart.z;
 
+		// offset
+		player.children[0].position.z = 9;
+
 		scene.add( player );
 		let sc = playerScale;
+		sc = 6;
 		player.scale.x = sc;
 		player.scale.y = sc;
 		player.scale.z = sc;
@@ -542,6 +555,24 @@ function createPlayer() {
 	}, undefined, function ( error ) {
 		console.error( error );
 	} );
+}
+
+function playerUpdate() {
+	if (!player) return;
+
+	playerWing += playerWingDir * playerWingSpeed * delta;
+	if (playerWing > playerWingMax)
+		playerWingDir = -1;
+	else if (playerWing < -playerWingMax)
+		playerWingDir = 1;
+
+	player.children[1].position.x = playerWing;
+	player.children[2].position.x = -playerWing;
+
+	// player.children[1].position.z = 10.25 + playerWing;
+	// player.children[2].position.z = 10.25 + playerWing;
+
+	player.children[0].rotation.x = -3.14 / 2 - (playerWing / playerWingMax) * 3.14 * 0.06;
 }
 
 // move player
