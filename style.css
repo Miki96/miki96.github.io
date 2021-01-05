@@ -129,9 +129,11 @@ h1 {
 	background-position: center;
 	background-size: 40%;
 	background-image: url(images/location.svg);
+	background-image: url(images/logo.png);
+	background-size: 70%;
 	background-color: #22004896;
 	/* background-color: #401c74; */
-	opacity: 0.9;
+	opacity: 1;
 }
 
 #links {

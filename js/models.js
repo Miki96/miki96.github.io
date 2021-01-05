@@ -253,6 +253,9 @@ function init() {
 	// games
 	createGames();
 
+	// greet
+	createGreet();
+
 	delta = clock.getDelta();
 	// load ship
 	//loadShip();
@@ -336,7 +339,12 @@ function initMobileControls() {
 }
 
 function initInfo() {
-	let strings = ["CONTROLS", "WASD - MOVE", "SHIFT - BOOST", "SPACE - SHOOT"];
+	let strings = [];
+	if (WIDTH > 800) {
+		strings = ["CONTROLS:", "WASD - MOVE", "SHIFT - BOOST", "SPACE - SHOOT"];
+	} else {
+		strings = ["CONTROLS:", "SIDE - TURN", "UP - FORWARD", "FLASH - BOOST"];
+	}
 	for (let i = 0; i < strings.length; i++) {
 		let text = createInfo(strings[i]);
 		text.position.x = playerStart.x + 200 - 500 - i * 20 + 300;
@@ -1497,14 +1505,14 @@ function createGames() {
 	];
 
 	for (let i = 0; i < imgList.length; i++) {
-		createBilboard(x, y, z, imgList[i].image);
+		createBilboard(x, y, z, imgList[i].image, 438, 247);
 		createGameText(x, y, z, imgList[i].name, imgList[i].link, imgList[i].done);
 		x += 100;
 		z += 350;
 	}
 }
 
-function createBilboard(x, y, z, image) {
+function createBilboard(x, y, z, image, width, height, scale = 1) {
 	let rtd = (3.14 / 180);
 
 	let pivot = new THREE.Object3D();
@@ -1515,8 +1523,8 @@ function createBilboard(x, y, z, image) {
 	//pivot.add(rock);
 
 	// board
-	let width = 128 * 3.42;
-	let height = 72 * 3.42;
+	// let width = 128 * 3.42;
+	// let height = 72 * 3.42;
 	let depth = 30;
 	let offset = 0;
 	//let board = createBox(width, depth, height, Colors.gray);
@@ -1525,12 +1533,12 @@ function createBilboard(x, y, z, image) {
 	
 	// pin
 	let pin1 = createBox(100, 10, 10, Colors.gray);
-	pin1.position.x = - width / 2;
+	pin1.position.x = - width / 2 + 5;
 	pin1.position.z = -60;
 	pin1.rotation.x = 45 * rtd;
 	pivot.add(pin1);
 	let pin2 = createBox(100, 10, 10, Colors.gray);
-	pin2.position.x = - width / 2;
+	pin2.position.x = - width / 2 + 5;
 	pin2.position.z = 60;
 	pin2.rotation.x = 45 * rtd;
 	pivot.add(pin2);
@@ -1577,13 +1585,12 @@ function createBilboard(x, y, z, image) {
 	poster.rotation.z = 180 * rtd;
 	pivot.add(poster);
 
-	
-	// pivot.rotation.x = 25 * rtd;
-	// pivot.rotation.y = -25 * rtd;
-	// pivot.rotation.z = 15 * rtd;
 	pivot.position.x = x;
 	pivot.position.y = y;
 	pivot.position.z = z;
+	pivot.scale.x = scale;
+	pivot.scale.y = scale;
+	pivot.scale.z = scale;
 
 	scene.add(pivot);
 }
@@ -1621,6 +1628,39 @@ function createBox(width, height, depth, color) {
 	});
 	let cube = new THREE.Mesh( geometry, material );
 	return cube;
+}
+
+// greet msg
+function createGreet() {
+	// image
+	let x = playerStart.x + 148 + 45;
+	let y = -50;
+	let z = playerStart.z - 350;
+	let scale = 1.3;
+	createBilboard(x, y, z, 'profile.png', 256, 256, scale - 0.04);
+
+	// border
+	let rect = createRect(256, 256);
+	rect.position.x = x - 390 - 35 + 128 - 85;
+	rect.position.y = y;
+	rect.position.z = z + 0;
+	rect.scale.x *= scale;
+	rect.scale.y *= scale;
+	rect.scale.z *= scale;
+	scene.add(rect);
+
+	// text
+	let strings = ["Welcome!", "My name is Miki.","This is my portfolio.","Follow the signs and", "learn more about me."];
+	for (let i = 0; i < strings.length; i++) {
+		let text = createInfo(strings[i], (i == 0 ? 70 : 45), i == 0, false, 1024, 1024, 'center');
+		text.position.x = x + -390 - 35 + 128 - 85;
+		text.position.y = y + 0;
+		text.position.z = z + i * 50 + -80;
+		text.scale.x *= scale;
+		text.scale.y *= scale;
+		text.scale.z *= scale;
+		scene.add(text);
+	}
 }
 
 // interaction
@@ -1683,7 +1723,7 @@ function createCameraControls() {
 
 	['touchstart', 'mousedown'].forEach( ev => 
 		document.addEventListener(ev, (e) => {
-			if (mobileEngine || mobileTurbo) return;
+			if (mobileEngine || mobileTurbo || mobileLeft || mobileRight) return;
 			e.preventDefault();
 			camMouseDown = true;
 			camControl = true; 
