@@ -1,4 +1,8 @@
 @font-face {
+	font-family: Catamaran;
+	src: url('fonts/Catamaran.ttf');
+}
+@font-face {
 	font-family: Kano;
 	src: url('fonts/Kano.otf');
 }
@@ -7,9 +11,8 @@
     margin: 0;
 	padding: 0;
 	box-sizing: border-box;
-	font-family: Kano;
+	font-family: Kano, Catamaran, sans-serif;
 }
-
 
 body {
 	touch-action: none;
@@ -22,6 +25,21 @@ body {
 	overflow: hidden;
 	background: linear-gradient(#0f153c, #12499c);
 	background: linear-gradient(#160419, #220048);
+}
+
+#test {
+	position: absolute;
+	right: 20px;
+	top: 20px;
+	width: 200px;
+	height: 100px;
+	border: 2px solid gray;
+	z-index: 100;
+	background-color: #000000cc;
+	color: #eee;
+	/* display: none; */
+	font-family: Catamaran;
+	visibility: hidden;
 }
 
 h1 {
@@ -109,6 +127,9 @@ h1 {
 	transition: opacity 0.3s, visibility 0.3s;
 }
 
+canvas {
+	font-family: 'Times New Roman', Times, serif;
+}
 
 #portal {
 	position: absolute;
@@ -166,9 +187,6 @@ h1 {
 	background-color: #eee;
 	opacity: 0.3;
 }
-
-
-
 
 /* CONTROLS */
 
@@ -277,7 +295,6 @@ h1 {
 }
 
 #gameRace .number, #gameOver {
-	font-family: Roboto;
 	color: yellow;
 }
 
@@ -300,7 +317,6 @@ h1 {
 
 #gameOver span {
 	color: yellow;
-	font-family: Roboto;
 	font-weight: bold;
 	font-size: 100px;
 }

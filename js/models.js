@@ -15,6 +15,7 @@ var clock = new THREE.Clock(true);
 var texLoader = new THREE.TextureLoader;
 
 var delta = 0;
+var testField;
 
 var camPos = new THREE.Vector3(0, 0, 0);
 var camSpeed = 3;
@@ -218,7 +219,7 @@ function init() {
 	initMobileControls();
 	createCameraControls();
 
-	initInfo();
+	showControls();
 
 	// add portal controls
 	createPortals();
@@ -256,6 +257,9 @@ function init() {
 	// greet
 	createGreet();
 
+	// education
+	createEducation();
+
 	delta = clock.getDelta();
 	// load ship
 	//loadShip();
@@ -279,7 +283,7 @@ function init() {
 	// renderer.setSize( window.innerWidth, window.innerHeight );
 	// document.getElementById('world').appendChild( renderer.domElement );
 
-
+	testField = document.getElementById('test');
 
 	loop();
 }
@@ -338,20 +342,24 @@ function initMobileControls() {
 	);
 }
 
-function initInfo() {
+function showControls() {
 	let strings = [];
 	if (WIDTH > 800) {
 		strings = ["CONTROLS:", "WASD - MOVE", "SHIFT - BOOST", "SPACE - SHOOT"];
 	} else {
-		strings = ["CONTROLS:", "SIDE - TURN", "UP - FORWARD", "FLASH - BOOST"];
+		strings = ["CONTROLS:", "SIDES - TURN", "UP - FORWARD", "FLASH - BOOST"];
 	}
+
+	let w = 400;
+	let h = 256;
+	let loc = playerStart;
+	let data = [];
 	for (let i = 0; i < strings.length; i++) {
-		let text = createInfo(strings[i]);
-		text.position.x = playerStart.x + 200 - 500 - i * 20 + 300;
-		text.position.y = playerStart.y;
-		text.position.z = playerStart.z + i * 60 + 150;
-		scene.add(text);
+		data.push({
+			text: strings[i], size: 28, bold: true, align: 'right', x: w - 10 - i * 20, y: 60 + i * 60
+		});
 	}
+	createMessage(data, false, w, h, playerStart.x + 15, -10, playerStart.z + 218, 1, true);
 }
 
 // render scene
@@ -446,9 +454,9 @@ function createLines() {
 	line.computeLineDistances();
 	line.scale.set( 1, 1, 1 );
 	line.position.x = 0;
+	line.geometry.attributes.position.needsUpdate = true;
 	scene.add( line );
 
-	// console.log(line);
 }
 
 function updateTrail() {
@@ -460,8 +468,9 @@ function updateTrail() {
 	if (playerVelocity > 0 || true) {
 		for (let i = trailSize * 3 - 1; i > 2; i--) {
 			trail[i] = trail[i - 3];
+			if (i % 3 == 1) trail[i] = i * 0.002;
 		}
-		trail[0] = player.position.x;
+		trail[0] = player.position.x + 0.001;
 		trail[1] = 0;
 		trail[2] = player.position.z;
 	}
@@ -472,12 +481,8 @@ function updateTrail() {
 		trailActive -= 3;
 	}
 
-	// line.geometry.setPositions(trail.slice(0, trailActive));
 	line.geometry.setPositions(trail);
 	line.geometry.maxInstancedCount = trailActive / 3;
-	// line.geometry.attributes.position.needsUpdate = true;
-	// line.updateMatrix();
-	// console.log(trailActive);
 }
 
 function playerShoot() {
@@ -1249,12 +1254,12 @@ function createPlanets() {
 
 	for (let i = 0; i < planets.length; i++) {
 		// create 
-		var size = planets[i].size;
+		let size = planets[i].size;
 		planets[i].mesh = new PlanetMesh(size, planets[i].color).mesh;
 		planets[i].mesh.position.x = -planets[i].dist;
 
 		// add pivot
-		var pivot = new THREE.Object3D();
+		let pivot = new THREE.Object3D();
 		pivot.add(planets[i].mesh);
 		planets[i].pivot = pivot;
 
@@ -1262,19 +1267,23 @@ function createPlanets() {
 		planets[i].pivot.rotation.y = (2 * Math.PI) * Math.random();
 
 		// add path
-		var path = createPath(planets[i].dist);
+		let path = createPath(planets[i].dist);
 
-		// add title of planet
-		var text = createText(planets[i].name);
-		text.position.x = -planets[i].dist;
-		titles.push(text);
-		scene.add(text);
+		// name
+		let data = [{
+			text: planets[i].name, size: 26, bold: true, align: 'right', x: 150 - 10, y: 60
+		}];
+		let sprite = createMessage(data, false, 150, 70, -planets[i].dist, 0, 0, 1, false);
+		titles.push(sprite);
 
 		// add to scene
 		scene.add(planets[i].pivot);
 		scene.add(path);
 	}
 
+	// title
+	let text = ["PLANETS", "I am usually a programmer", "but really an artist at heart"];
+	createTitle(text, mapLocPlanets.x - 480, mapLocPlanets.y, mapLocPlanets.z);
 }
 
 // Rotate planets around sun and its axis
@@ -1364,117 +1373,62 @@ function rockMesh(size) {
 	return mesh;
 }
 
-// Info
-function createInfo(text, size = 70, bold = true, depth = false, w = 1024, h = 256, align = 'right') {
-	// create canvas
+// message with border
+function createMessage(data, border, w, h, x, y, z, scale, depth) {
+	// canvas
 	let canvas = document.createElement("canvas");
 	let ctx = canvas.getContext('2d');
 	canvas.width = w;
 	canvas.height = h;
-	
-	// EDIT
-	let style = (bold) ? 'bold ' : ' ';
-	ctx.font = style + size + 'pt Kano';
-	//ctx.fillStyle = 'red';
-    //ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'white';
-    ctx.textAlign = align;
-	// ctx.textBaseline = "middle";
-	if (align == 'center')
-		ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-	else if (align == 'right')
-		ctx.fillText(text, canvas.width, canvas.height / 2);
-	else
-		ctx.fillText(text, 0, canvas.height / 2);
-	
-	// texture and geometry for text
-	texture = new THREE.Texture(canvas);
+
+	// border
+	if (border) {
+		// background
+		ctx.beginPath();
+		ctx.lineWidth = "0";
+		ctx.fillStyle = "#240d32cc";
+		ctx.rect(0, 0, w, h);
+		ctx.fill();
+		// border
+		ctx.beginPath();
+		ctx.lineWidth = "10";
+		ctx.strokeStyle = "#ffffffcc";
+		ctx.rect(0, 0, w, h);
+		ctx.stroke();
+	}
+
+	// text
+	for (let i = 0; i < data.length; i++) {
+		const d = data[i];
+		let style = (d.bold) ? 'bold ' : ' ';
+		ctx.font = style + d.size + 'pt Kano, Catamaran';
+		// ctx.font = style + d.size;
+		ctx.fillStyle = 'white';
+		ctx.textAlign = d.align;
+		ctx.fillText(d.text, d.x, d.y);
+	}
+
+	// create texture
+	texture = new THREE.CanvasTexture(canvas);
 	var material = new THREE.SpriteMaterial({ 
 		map: texture, 
 		color: 0xffffff,
 		transparent: true,
 		depthTest: depth,
 		depthWrite: false,
-		opacity: 0.9
+		opacity: 1
 	});
-	texture.needsUpdate = true;
-	// final mesh
-	let sprite = new THREE.Sprite( material );
-	sprite.scale.set(w / 2.5, h / 2.5, 1);
-    return sprite;
-}
-
-// Rect
-function createRect(w, h) {
-	// create canvas
-	let canvas = document.createElement("canvas");
-	let ctx = canvas.getContext('2d');
-	canvas.width = w;
-	canvas.height = h;
+	// texture.needsUpdate = true;
+	texture.minFilter = THREE.LinearFilter;
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+	texture.wrapT = THREE.ClampToEdgeWrapping;
 	
-	// back
-	ctx.beginPath();
-	ctx.lineWidth = "0";
-	ctx.fillStyle = "#ffffff11";
-	ctx.rect(0, 0, w, h);
-	ctx.fill();
-
-	// border
-	ctx.beginPath();
-	ctx.lineWidth = "10";
-	ctx.strokeStyle = "white";
-	ctx.rect(0, 0, w, h);
-	ctx.stroke();
-
-	// texture and geometry for text
-	texture = new THREE.Texture(canvas);
-	var material = new THREE.SpriteMaterial({ 
-		map: texture, 
-		color: 0xffffff,
-		transparent: true,
-		opacity: 0.6
-	});
-	material.depthTest = false;
-	texture.needsUpdate = true;
-	// final mesh
+	// return sprite
 	let sprite = new THREE.Sprite( material );
-	sprite.scale.set(w / 1, h / 1, 1);
+	sprite.scale.set(w * scale, h * scale, 1);
+	sprite.position.set(x, y, z);
+	scene.add(sprite);
     return sprite;
-}
-
-// Title of planet
-function createText(text) {
-	// create canvas
-	let canvas = document.createElement("canvas");
-	let ctx = canvas.getContext('2d');
-	canvas.width = 1024;
-	canvas.height = 256;
-	changeCanvas(text, ctx, canvas);
-	
-	// texture and geometry for text
-	texture = new THREE.Texture(canvas);
-	var material = new THREE.SpriteMaterial({ 
-		map: texture, 
-		color: 0xffffff,
-		transparent: true,
-		opacity: 0.9
-	});
-	material.depthTest = false;
-	texture.needsUpdate = true;
-	// final mesh
-	let sprite = new THREE.Sprite( material );
-	sprite.scale.set(400 / 2,100 / 2,1);
-    return sprite;
-}
-
-function changeCanvas(text, ctx, canvas) {
-    ctx.font = 'bolder 130pt Kano';
-	// ctx.fillStyle = 'red';
-    // ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'white';
-    ctx.textAlign = "right";
-    // ctx.textBaseline = "middle";
-    ctx.fillText(text, canvas.width, canvas.height / 2);
 }
 
 function positionText() {
@@ -1482,7 +1436,7 @@ function positionText() {
 		// next to planet
 		titles[i].position.setFromMatrixPosition(planets[i].mesh.matrixWorld);
 		// offset 
-		titles[i].position.x += 100;
+		titles[i].position.x += 140;
 		titles[i].position.y += 50;
 	}
 }
@@ -1490,7 +1444,7 @@ function positionText() {
 // games
 function createGames() {
 	let loc = mapLocGames;
-	//loc = playerStart;
+	// loc = playerStart;
 	let x = loc.x + 600;
 	let y = loc.y - 50;
 	let z = loc.z;
@@ -1504,15 +1458,43 @@ function createGames() {
 		{name: 'RUNNER', image: 'game1.png', link: '#', done: false},
 	];
 
+	let w = 256;
+	let h = 256;
+	let s1 = "CLICK TO PLAY";
+	let s2 = "COMING SOON";
 	for (let i = 0; i < imgList.length; i++) {
-		createBilboard(x, y, z, imgList[i].image, 438, 247);
-		createGameText(x, y, z, imgList[i].name, imgList[i].link, imgList[i].done);
-		x += 100;
-		z += 350;
+		createBilboard(x + 100 * i, y, z + i * 350, imgList[i].image, 438, 247);
+
+		let strings = [imgList[i].done ? s1 : s2, imgList[i].name];
+		let data = [];
+		for (let j = 0; j < strings.length; j++) {
+			data.push({
+				text: strings[j], size: j==1 ? 30 : 15, bold: j==1, align: 'center', x: w / 2, y: 100 + j * 55
+			});
+		}
+		let sprite = createMessage(data, true, w, h, x - 390 + 100 * i, y-1, z + 350 * i, 1, true);
+		sprite.userData = {URL: imgList[i].link};
+		gameLinks.push(sprite);
 	}
+
+	// title
+	let text = ["GAMES", "Try some of the games I made", "as a game development teacher" ];
+	createTitle(text, loc.x - 480 + 120, loc.y, loc.z);
 }
 
-function createBilboard(x, y, z, image, width, height, scale = 1) {
+function createTitle(strings, x, y, z) {
+	let w = 600;
+	let h = 180;
+	let data = [];
+	for (let i = 0; i < strings.length; i++) {
+		data.push({
+			text: strings[i], size: i==0 ? 36 : 24, bold: i==0, align: 'right', x: w - 10, y: 60 + i * 55
+		});
+	}
+	createMessage(data, false, w, h, x, y-1, z, 1, true);
+}
+
+function createBilboard(x, y, z, image, width, height, scale = 1, ) {
 	let rtd = (3.14 / 180);
 
 	let pivot = new THREE.Object3D();
@@ -1595,31 +1577,6 @@ function createBilboard(x, y, z, image, width, height, scale = 1) {
 	scene.add(pivot);
 }
 
-function createGameText(x, y, z, text, link, done) {
-	// text
-	let s1 = "CLICK TO PLAY";
-	let s2 = "COMING SOON";
-	let s = done ? s1 : s2;
-	let strings = [s, text];
-	for (let i = 0; i < strings.length; i++) {
-		let text = createInfo(strings[i], (i+1) * 38, i == 1, false, 1024, 1024, 'center');
-		text.position.x = x + -390;
-		text.position.y = y + 0;
-		text.position.z = z + i * 60 + -30;
-		scene.add(text);
-	}
-
-	// link
-	let rect = createRect(256, 256);
-	rect.userData = { URL: link };
-	rect.position.x = x - 390;
-	rect.position.y = y;
-	rect.position.z = z + 0;
-	scene.add(rect);
-	
-	gameLinks.push(rect);
-}
-
 function createBox(width, height, depth, color) {
 	let geometry = new THREE.BoxGeometry( width, height, depth );
 	let material = new THREE.MeshPhongMaterial({
@@ -1639,27 +1596,91 @@ function createGreet() {
 	let scale = 1.3;
 	createBilboard(x, y, z, 'profile.png', 256, 256, scale - 0.04);
 
-	// border
-	let rect = createRect(256, 256);
-	rect.position.x = x - 390 - 35 + 128 - 85;
-	rect.position.y = y;
-	rect.position.z = z + 0;
-	rect.scale.x *= scale;
-	rect.scale.y *= scale;
-	rect.scale.z *= scale;
-	scene.add(rect);
-
 	// text
 	let strings = ["Welcome!", "My name is Miki.","This is my portfolio.","Follow the signs and", "learn more about me."];
+	let data = [];
 	for (let i = 0; i < strings.length; i++) {
-		let text = createInfo(strings[i], (i == 0 ? 70 : 45), i == 0, false, 1024, 1024, 'center');
-		text.position.x = x + -390 - 35 + 128 - 85;
-		text.position.y = y + 0;
-		text.position.z = z + i * 50 + -80;
-		text.scale.x *= scale;
-		text.scale.y *= scale;
-		text.scale.z *= scale;
-		scene.add(text);
+		data.push({
+			text: strings[i], size: i==0 ? 28 : 17, bold: i==0, align: 'center', x: 256/2, y: 60 + i * 40
+		});
+	}
+	createMessage(data, true, 256, 256, x - 380, y, z, scale, true);
+}
+
+// schools
+function createEducation() {
+	let loc = playerStart;
+	loc = mapLocSchool;
+
+	let x = loc.x + 100;
+	let y = loc.y;
+	let z = loc.z;
+	let offsetZ = 180;
+	let offsetX = 55;
+
+	// title
+	let text = ["EDUCATION", "Learn about the educational path I took", "to become the person I am today"];
+	createTitle(text, x - 600 + 120, y, z - 20);
+
+	// education list
+	let edu = [
+		{
+			title: 'Phd in Computer Science',
+			first: 'Faculty of Sciences and Mathematics, University of Niš',
+			second: 'Computer Science Department, Machine Learning',
+			image: 'edu_2.png',
+			years: '2020-present'
+		},
+		{
+			title: 'MS in Computer Science',
+			first: 'Faculty of Sciences and Mathematics, University of Niš',
+			second: 'Software Development module, GPA: 10.0',
+			image: 'edu_2.png',
+			years: '2018-2020'
+		},
+		{
+			title: 'BS in Computer Science',
+			first: 'Faculty of Sciences and Mathematics, University of Niš',
+			second: 'Computer Science module, GPA: 9.6',
+			image: 'edu_2.png',
+			years: '2015-2018'
+		},
+		{
+			title: 'High School',
+			first: 'Gymnasium Svetozar Marković, Niš',
+			second: 'Department for students gifted in mathematics',
+			image: 'edu_1.png',
+			years: '2012-2015'
+		},
+		{
+			title: 'Elementary School',
+			first: 'Elementary school Bubanjski Heroji, Niš',
+			second: 'Earned \"Vukovac\" award, GPA: 5.0',
+			image: 'edu_0.png',
+			years: '2004-2012'
+		}
+	];
+
+	let w = 590;
+	let h = 128;
+	x += 670;
+	for (let i = 0; i < edu.length; i++) {
+		// image
+		createBilboard(x + i * offsetX, y-11, z + i * offsetZ, edu[i].image, 256, 256, 0.5);
+			
+		// string
+		let strings = [edu[i].title, edu[i].first, edu[i].second];
+		let data = [];
+		for (let i = 0; i < strings.length; i++) {
+			data.push({
+				text: strings[i], size: i==0 ? 20 : 18, bold: i==0, align: 'right', x: w - 20, y: 40 + i * 33
+			});
+		}
+		// year
+		data.push({
+			text: edu[i].years, size: 20, bold: true, align: 'left', x: 20, y: 40
+		})
+		createMessage(data, true, w, h, x - 380 + i * offsetX, y-10, z + i * offsetZ, 1, true);
 	}
 }
 
