@@ -347,10 +347,17 @@ function showControls() {
 	if (WIDTH > 800) {
 		strings = ["CONTROLS:", "WASD - MOVE", "SHIFT - BOOST", "SPACE - SHOOT"];
 	} else {
-		strings = ["CONTROLS:", "SIDES - TURN", "UP - FORWARD", "FLASH - BOOST"];
+		strings = ["CONTROLS:", "TOUCH - PAN", "FLASH - BOOST", "ARROWS - TURN"];
+		// strings  = [
+		// 	"CONTROLS:",
+		// 	"USE BUTTONS",
+		// 	"AT THE BOTTOM",
+		// 	"OF THE SCREEN",
+		// 	"TO NAVIGATE SHIP",
+		// ];
 	}
 
-	let w = 400;
+	let w = 450;
 	let h = 256;
 	let loc = playerStart;
 	let data = [];
@@ -1451,8 +1458,8 @@ function createGames() {
 
 	let imgList = [
 		{name: 'ROLLER', image: 'game7.png', link: '/games/roller', done: true},
-		{name: 'RACER', image: 'game6.png', link: '#', done: false},
-		{name: 'TOWER', image: 'game0.png', link: '#', done: false},
+		{name: 'RACER', image: 'game6.png', link: '/games/racer', done: true},
+		{name: 'TOWER', image: 'game0.png', link: '/games/tower', done: true},
 		{name: 'UNITS', image: 'game5.png', link: '#', done: false},
 		{name: 'HEROES', image: 'game4.png', link: '#', done: false},
 		{name: 'RUNNER', image: 'game1.png', link: '#', done: false},
