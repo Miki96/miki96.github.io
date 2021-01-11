@@ -1,11 +1,11 @@
 {
 "companyName": "DefaultCompany",
-"productName": "Roller",
+"productName": "Racing",
 "productVersion": "0.1",
 "dataUrl": "racer.data.unityweb",
 "wasmCodeUrl": "racer.wasm.code.unityweb",
 "wasmFrameworkUrl": "racer.wasm.framework.unityweb",
-"graphicsAPI": ["WebGL 2.0","WebGL 1.0"],
+"graphicsAPI": ["WebGL 2.0"],
 "webglContextAttributes": {"preserveDrawingBuffer": false},
 "splashScreenStyle": "Dark",
 "backgroundColor": "#231F20",
