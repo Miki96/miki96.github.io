@@ -1460,9 +1460,9 @@ function createGames() {
 		{name: 'ROLLER', image: 'game7.png', link: '/games/roller', done: true},
 		{name: 'RACER', image: 'game6.png', link: '/games/racer', done: true},
 		{name: 'TOWER', image: 'game0.png', link: '/games/tower', done: true},
+		{name: 'SHOOTER', image: 'game1.png', link: '/games/shooter', done: true},
 		{name: 'UNITS', image: 'game5.png', link: '#', done: false},
 		{name: 'HEROES', image: 'game4.png', link: '#', done: false},
-		{name: 'RUNNER', image: 'game1.png', link: '#', done: false},
 	];
 
 	let w = 256;
@@ -1768,12 +1768,12 @@ function createCameraControls() {
 			camMouseDown = false; 
 		})
 	);
-	['mouseleave'].forEach( ev => 
-		document.addEventListener(ev, () => { 
-			camMouseDown = false;
-			camControl = false;
-		})
-	);
+	// ['mouseleave'].forEach( ev => 
+	// 	document.addEventListener(ev, () => { 
+	// 		camMouseDown = false;
+	// 		camControl = false;
+	// 	})
+	// );
 }
 
 function cameraControls() {
